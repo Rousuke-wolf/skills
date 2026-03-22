@@ -11,10 +11,8 @@ const openai = new OpenAI({
 // ✅ 非遗列表
 const heritageList = `
 [
-  { "index": 1, "name": "京剧" },
-  { "index": 2, "name": "皮影戏" },
-  { "index": 3, "name": "剪纸艺术" },
-  { "index": 4, "name": "木版年画" }
+  { "index": 1, "name": "rabbit" },
+  { "index": 2, "name": "lion" }
 ]
 `;
 
