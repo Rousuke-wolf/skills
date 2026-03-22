@@ -184,7 +184,6 @@ function initRecognition(voiceStatus) {
             if (res.isShowModel) {
                 handleModelDisplay(res.modelIndex);
             }
-
         } catch (err) {
             console.error("AI调用失败:", err);
             appendAI("刚刚有点问题，我们再试一次吧～");
