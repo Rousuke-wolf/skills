@@ -1,33 +1,12 @@
 import './style.css'
 import './script'
-import './api/qwen'
-
-const MODELS = [
-  {
-    id: 'lion',
-    name: '兔儿爷',
-    src: './src/assets/3d-model/lion.glb',
-    intro: `兔儿爷是北京地区极具代表性的传统民间艺术形象，也是老北京中秋民俗文化中的重要象征。
-它通常被塑造成兔首人身，身披铠甲或官袍，神态威严中又带有几分可爱，既有民俗信仰色彩，
-又富有浓厚的生活气息。关于兔儿爷的来历，民间普遍认为它与"玉兔"传说有关，后来在北京民俗中
-逐渐演变成一种具有守护、祈福和娱乐意味的泥塑玩具。过去每逢中秋前后，民间艺人都会制作各式各样的
-兔儿爷，有的骑虎，有的骑鹿，有的手持捣药杵，造型生动鲜活，深受儿童和百姓喜爱。兔儿爷不仅体现了
-北京民间手工艺的审美特色，也承载着团圆、吉祥和平安的文化寓意，是中国传统节俗文化与民间艺术结合的典型代表。`,
-  },
-]
+import { MODELS } from './models.js'
 
 let currentModelIndex = 0
 let currentTab = 'ai'
 
 function buildModelSwitcher() {
-  if (MODELS.length <= 1) return ''
-  return `
-    <div class="model-switcher">
-      ${MODELS.map((m, i) => `
-        <button class="model-switch-btn ${i === currentModelIndex ? 'active' : ''}" onclick="switchModel(${i})">${m.name}</button>
-      `).join('')}
-    </div>
-  `
+  return ''
 }
 
 function buildModelPanel() {
@@ -144,7 +123,10 @@ function renderApp(activeTab = 'ai') {
 
 window.switchTab = function (tab, modelIndex) {
   currentTab = tab
-  if (modelIndex !== undefined) currentModelIndex = modelIndex
+  if (modelIndex !== undefined) {
+    const idx = Number(modelIndex)
+    currentModelIndex = (idx >= 0 && idx < MODELS.length) ? idx : 0
+  }
   renderApp(tab)
 }
 
