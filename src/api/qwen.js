@@ -44,7 +44,7 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "qwen-plus",
+      model: "qwen3.5-plus",
       messages,
       stream: true
     });
