@@ -227,8 +227,9 @@
 .culture-chat-panel .welcome-name  { color: var(--c-dark) !important; }
 .culture-chat-panel .welcome-body  { color: var(--c-mid) !important; }
 .culture-chat-panel .welcome-avatar {
-  background: url('/avatar.png') center / cover no-repeat;
-  color: white !important;
+  background: url('/avatar.png') center / cover no-repeat !important;
+  color: transparent !important;
+  font-size: 0 !important;
 }
 
 /* 输入区 */
@@ -257,7 +258,7 @@
 
 .culture-chat-panel .input-area button:first-of-type:hover {
   background: var(--c-dark) !important;
-  box-shadow: 0 0 12px rgba(183, 90, 14, 0.35) !important;
+  box-shadow: 0 0 12px rgba(139,98,64,0.35) !important;
 }
 
 .culture-chat-panel .tts-control-btn {
@@ -282,10 +283,10 @@
   border: none !important;
   color: white !important;
   animation: none !important;
-  box-shadow: 0 2px 8px rgba(250, 189, 91, 0.5) !important;
+  box-shadow: 0 2px 8px rgba(201, 152, 74, 0.5) !important;
   transition: transform 0.15s, box-shadow 0.15s, background 0.15s !important;
 }
- 
+
 .culture-chat-panel .voice-chat-btn:hover {
   background: var(--c-brown) !important;
   box-shadow: 0 4px 16px rgba(139, 98, 64, 0.6) !important;
@@ -478,9 +479,73 @@
   min-height: 180px !important;
 }
 
-/* ── 2列快捷提问 ─────────────────────────────── */
-.culture-suggest-2col {
-  grid-template-columns: 1fr 1fr !important;
+/* ── 知识卡片区整体扩大 ──────────────────────── */
+.culture-cards-panel {
+  flex-shrink: 0 !important;
+  min-height: 210px !important;
+  padding: 12px 20px 14px !important;
+}
+
+.culture-mini-card {
+  padding: 10px 12px !important;
+  gap: 4px !important;
+}
+
+.mini-card-num  { font-size: 16px !important; }
+.mini-card-emoji { font-size: 16px !important; }
+.mini-card-name  { font-size: 13px !important; }
+.mini-card-tag   { font-size: 11px !important; }
+
+/* ── 聊天区放大 ───────────────────────────────── */
+.culture-chat-panel {
+  flex: 1 1 auto !important;
+  max-height: none !important;
+}
+
+.culture-chat-panel .chat-history {
+  flex: 1 1 0 !important;
+  min-height: 180px !important;
+  max-height: none !important;
+}
+
+/* ── 语音模式全屏修复 ─────────────────────────── */
+/* culture-dashboard 是 flex 行，voice-mode 时让左侧撑满整行 */
+.voice-mode .culture-dashboard {
+  flex-direction: row !important;
+}
+
+.voice-mode .culture-left {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+  border-right: none !important;
+}
+
+.voice-mode .culture-left .character-section {
+  flex: 1 !important;
+  border-radius: 0 !important;
+}
+
+.voice-mode .culture-left .character-3d {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.voice-mode .culture-right {
+  display: none !important;
+  width: 0 !important;
+}
+
+/* ── 发送中禁用输入区视觉反馈 ────────────────── */
+.input-area.sending input {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.input-area.sending #sendBtn {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* ── 聊天历史区更高（减小 flex 压缩，让它占更多空间）── */
@@ -536,4 +601,15 @@
 .voice-mode-ui .voice-back-btn:hover {
   background: #f3ece0 !important;
   color: #3d1f0a !important;
+}
+
+/* ── 删除预设问题后，聊天历史撑满剩余空间 ─── */
+.culture-chat-panel {
+  padding-bottom: 12px !important;
+}
+
+.culture-chat-panel .chat-history {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  margin-bottom: 8px !important;
 }

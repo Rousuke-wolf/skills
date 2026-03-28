@@ -1,7 +1,27 @@
 import { chatWithAI, chatWithAIStream } from "./api/qwen";
 import { speak, stop, pause, resume, isPlaying } from "./tts.js";
 
-let chatHistoryData = [];
+let chatHistoryData = [
+    {
+        role: "system",
+        content: `你是"绫韵"，一位专注于中国传统刺绣文化的数字人讲解员。你只回答与刺绣相关的问题，包括：刺绣历史、四大名绣（苏绣、湘绣、蜀绣、粤绣）、少数民族刺绣（苗绣等）、针法技法（平针、回针、锁边针、缎针等）、刺绣工具材料、非物质文化遗产保护等话题。
+如果用户询问与刺绣无关的内容（如兔儿爷、舞狮、其他非遗项目或任何其他话题），请礼貌地说明你只专注于刺绣文化，并引导用户提问刺绣相关内容。
+回答风格：亲切、专业、富有文化底蕴，适当使用刺绣相关的比喻和意象。`
+    }
+];
+
+// ── 输入锁：模块级，供 stop 按钮随时解锁 ────────
+let _replyStopped = false;   // 标记"已被手动结束"
+
+function unlockInput() {
+    _replyStopped = true;
+    const sendBtn  = document.getElementById("sendBtn");
+    const input    = document.getElementById("textInput");
+    const inputArea = sendBtn?.closest(".input-area");
+    if (sendBtn)   { sendBtn.disabled = false; }
+    if (input)     { input.disabled = false; }
+    if (inputArea) { inputArea.classList.remove("sending"); }
+}
 
 // ─────────────────────────────────────────────
 // 语音设置（音量 0-100，语速 0.5-2.0）
@@ -44,6 +64,7 @@ function resumeTyping() {
 
 function stopTyping() {
     _typingPaused = false;
+    if (_typingResume) { _typingResume(); }   // ← resolve 挂起的 await，让 appendAIStream 正常返回
     _typingResume = null;
     if (_typingTimer) { clearTimeout(_typingTimer); _typingTimer = null; }
 }
@@ -215,12 +236,9 @@ async function appendAIStream(historyMessages, userInput, onDone) {
     if (!finalData) return;
 
     const message = finalData.message || "";
-    const charCount = message.length || 1;
 
-    // ── isShowModel 立即跳转，不等打字结束 ──
     if (finalData.isShowModel) handleModelDisplay(finalData.modelIndex);
 
-    // 基准 40ms/字（rate=1.0），rate 越大打字越快
     const rate = (window._ttsSettings?.rate) ?? 1.2;
     const ESTIMATE_INTERVAL = Math.max(16, Math.floor(230 / rate));
     let i = 0;
@@ -246,7 +264,6 @@ async function appendAIStream(historyMessages, userInput, onDone) {
         tick();
     });
 
-    // 估算语音时长后停止口型（每字约 300ms）
     const lipsyncDuration = Math.max(2000, message.length * 300);
     setTimeout(() => {
         if (typeof window.stopLipsync === "function") window.stopLipsync();
@@ -339,9 +356,20 @@ async function initLive2D() {
             if (model.anchor) model.anchor.set(0.5, 0.28);
             model.x = w / 2;
             model.y = h * 0.55;
-            // scale 基于容器宽度，保持比例稳定
-            model.scale.set(w * 0.0005);
+            // 语音全屏模式容器很宽，用更小系数保持中位大小视觉一致
+            const isVoiceMode = document.querySelector(".app-wrapper")?.classList.contains("voice-mode");
+            const BASE = isVoiceMode ? 0.00035 : 0.0007;
+            model.scale.set(w * BASE * 1.1);
+            // 同步滚轮基准，避免切换后滚轮跳变
+            _baseScale = w * BASE;
         }
+        // ── 滚轮缩放 ─────────────────────────────────
+        let _baseScale  = container.clientWidth * 0.0007;
+        let _zoomFactor = 1.1;          // 初始即中位值
+        const ZOOM_MIN  = 0.8;
+        const ZOOM_MAX  = 1.4;
+        const ZOOM_STEP = 0.08;
+
         fitModel();
 
         model.interactive = true;
@@ -349,16 +377,8 @@ async function initLive2D() {
             try { model.motion("TapBody"); } catch (e) { }
         });
 
-        // resize 时重新适配（仅响应容器变化，不让人物变小）
         const ro = new ResizeObserver(() => fitModel());
         ro.observe(container);
-
-        // ── 滚轮缩放：限制在 0.5x ~ 2.5x 基准scale ──
-        let _baseScale = container.clientWidth * 0.0009;
-        let _zoomFactor = 1.0;
-        const ZOOM_MIN = 0.4;
-        const ZOOM_MAX = 1.2;
-        const ZOOM_STEP = 0.08;
 
         container.addEventListener("wheel", (e) => {
             e.preventDefault();
@@ -434,7 +454,14 @@ function bindEvents() {
         sendBtn.onclick = async () => {
             const text = input.value.trim();
             if (!text) return;
-            interruptCurrent();
+            // ── 发送锁：回复期间禁用输入，不打断当前回复 ──
+            const inputArea = sendBtn.closest('.input-area');
+            _replyStopped = false;
+            sendBtn.disabled = true;
+            input.disabled = true;
+            if (inputArea) inputArea.classList.add('sending');
+
+            // 不调 interruptCurrent()，不打断正在进行的回复
             appendUser(text);
             input.value = "";
             appendThinking();
@@ -442,10 +469,16 @@ function bindEvents() {
                 chatHistoryData.push({ role: "user", content: text });
                 chatHistoryData.push({ role: "assistant", content: res.message });
             });
+
+            // 若 stop 按钮已提前解锁，不再重复操作
+            if (!_replyStopped) {
+                unlockInput();
+                input.focus();
+            }
         };
         // 回车发送
         input.onkeydown = (e) => {
-            if (e.key === "Enter") sendBtn.onclick();
+            if (e.key === "Enter" && !sendBtn.disabled) sendBtn.onclick();
         };
     }
 
@@ -454,7 +487,7 @@ function bindEvents() {
         voiceBtn.onclick = () => {
             appWrapper.classList.add("voice-mode");
             voiceUI.style.display = "flex";
-            voiceStatus.innerText = "点击麦克风开始聊天";
+            voiceStatus.innerText = "点击麦克风开始语音聊天";
         };
     }
 
@@ -541,6 +574,8 @@ function bindEvents() {
             updateTtsButtons(false);
             const pauseBtn = document.getElementById("ttsControlBtn");
             if (pauseBtn) { pauseBtn.textContent = "⏸"; pauseBtn.title = "暂停语音"; }
+            // 结束回复，立即解锁输入
+            unlockInput();
         };
     }
 

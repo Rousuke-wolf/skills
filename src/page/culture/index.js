@@ -115,18 +115,6 @@ export default function buildCulturePage() {
               <button id="voiceChatBtn" class="voice-chat-btn" title="切换语音模式">🎤</button>
             </div>
 
-            <div class="suggest-grid culture-suggest culture-suggest-2col">
-              <div class="suggest-card" onclick="quickQuestion('苏绣和湘绣有什么区别？')">
-                <div class="suggest-card-icon">🌸</div>
-                <div class="suggest-card-title">四大名绣区别</div>
-                <div class="suggest-card-desc">比较苏绣、湘绣、蜀绣、粤绣的特点</div>
-              </div>
-              <div class="suggest-card" onclick="quickQuestion('刺绣最基础的针法有哪些？')">
-                <div class="suggest-card-icon">🪡</div>
-                <div class="suggest-card-title">入门针法</div>
-                <div class="suggest-card-desc">了解平针、回针、锁边针等基础技法</div>
-              </div>
-            </div>
           </div>
 
           <!-- ── 右下：随机知识卡片区 ── -->
