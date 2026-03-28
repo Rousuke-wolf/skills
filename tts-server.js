@@ -23,12 +23,16 @@ const server = http.createServer((req, res) => {
   let body = "";
   req.on("data", chunk => body += chunk);
   req.on("end", () => {
-    let text;
+    let text, volume, rate;
     try {
-      ({ text } = JSON.parse(body));
+      ({ text, volume, rate } = JSON.parse(body));
     } catch {
       res.writeHead(400); res.end("Bad request"); return;
     }
+
+    // 用请求体里的值，否则 fallback 到服务器默认值
+    const useVolume = (volume !== undefined) ? Number(volume) : 50;
+    const useRate   = (rate   !== undefined) ? Number(rate)   : 1.2;
 
     const taskId = randomUUID();
 
@@ -51,11 +55,11 @@ const server = http.createServer((req, res) => {
           function: "SpeechSynthesizer",
           model: MODEL,
           parameters: {
-            voice: VOICE,      // cosyvoice-v2 用 voice 字段
+            voice: VOICE,
             format: "mp3",
             sample_rate: 22050,
-            volume: 50,
-            rate: 1.2,
+            volume: useVolume,
+            rate: useRate,
             pitch: 1.0
           },
           input: {}
