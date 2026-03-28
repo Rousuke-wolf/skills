@@ -454,7 +454,7 @@ function bindEvents() {
         voiceBtn.onclick = () => {
             appWrapper.classList.add("voice-mode");
             voiceUI.style.display = "flex";
-            voiceStatus.innerText = "点击麦克风开始语音聊天";
+            voiceStatus.innerText = "点击麦克风开始聊天";
         };
     }
 
