@@ -20,7 +20,6 @@ export default function buildTeachingPage() {
             <div class="character-3d">
               <canvas id="live2d" style="width:100%;height:100%;"></canvas>
             </div>
-            <div class="live2d-label">Live2D 引导员 · 绫韵</div>
           </div>
           <div class="live2d-scene-info">
             <div class="scene-title">当前场景：<span>刺绣工坊环境</span></div>

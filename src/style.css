@@ -145,14 +145,12 @@ body {
 .character-3d {
   width: 100%;
   height: 620px;
-  background: radial-gradient(circle at 30% 30%, #2f3a4b, #131a24);
   border-radius: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 20px 30px -10px black;
   border: 1px solid rgba(251, 191, 36, 0.2);
 }
 

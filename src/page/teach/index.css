@@ -49,6 +49,7 @@
   flex: 1;
   min-height: 0;
   width: 100%;
+  background-color: #f3ece0 !important;
 }
 
 .character-3d canvas {
