@@ -1,0 +1,146 @@
+/* ── 3D展厅 · 米黄色主题，粘贴到 page/show3D/index.css 里覆盖原有背景色 ── */
+
+/* 整体页面背景 */
+.main-dashboard {
+  background: #f9f6f0;
+}
+
+/* 左侧区域 */
+.left-stage {
+  background: #fdfaf5;
+  border-right: 1px solid #e8e0d0;
+}
+
+/* Live2D 人物容器 */
+.character-section {
+  border: 1px solid #e8e0d0;
+  background: rgb(226, 217, 201, 0.86);
+  border-radius: 14px;
+}
+
+/* 表情切换按钮栏 */
+.emotion-switch {
+  background: #fffaf3;
+  border: 3px solid #f0e8d8;
+}
+
+.emotion-btn {
+  background: #fffefb;
+  border: 1px solid #e0d4be;
+  color: #7a6248;
+  border-radius: 20px;
+}
+
+.emotion-btn:hover {
+  background: #f5ede0;
+  border-color: #c8a878;
+}
+
+.emotion-btn.active {
+  background: #a07840;
+  color: #fff;
+  border-color: #a07840;
+}
+
+/* 右侧面板 */
+.model-right-panel {
+  background: #f9f6f0;
+}
+
+/* 3D 模型展示区 */
+.model-view-box {
+  background: #fffefb;
+  border: 1px solid #e8e0d0;
+  border-radius: 14px;
+}
+
+/* 未选择展品时的提示区 */
+.model-empty-hint {
+  background: #fffefb;
+  color: #9a8060;
+}
+
+.hint-icon {
+  color: #c8a878;
+}
+
+/* 下拉选择栏 */
+.model-dropdown-bar {
+  background: #fffaf3;
+  border: 2px solid #ede4d2;
+  border-radius: 14px;
+}
+
+.model-dropdown-label {
+  color: #7a6248;
+}
+
+.model-dropdown {
+  background: #fffefb;
+  border: 1px solid #d4c4a8;
+  color: #4a2e10;
+  border-radius: 8px;
+}
+
+.model-dropdown option {
+  background: #fffefb;
+  color: #4a2e10;
+}
+
+.model-dropdown:focus {
+  outline: none;
+  border-color: #a07840;
+}
+
+/* 展品介绍卡片 */
+.model-info-card {
+  background: #fffefb;
+  border: 1px solid #e8e0d0;
+  border-radius: 14px;
+}
+
+.model-info-header {
+  border-bottom: 1px solid #f0e8d8;
+}
+
+.model-info-title {
+  color: #5c3d1e;
+  font-weight: 500;
+}
+
+.model-info-name {
+  color: #4a2e10;
+}
+
+.model-info-text {
+  color: #7a6248;
+}
+
+/* 语音/返回按钮 */
+.intro-audio-btn {
+  background: #fffefb;
+  border: 1px solid #d4c4a8;
+  color: #7a6248;
+  border-radius: 8px;
+}
+
+.intro-audio-btn:hover {
+  background: #f5ede0;
+  border-color: #c8a878;
+}
+
+.model-back-voice-btn {
+  background: #a07840;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+}
+
+.model-back-voice-btn:hover {
+  background: #8a6430;
+}
+
+/* 音频状态文字 */
+.audio-status {
+  color: #9a8060;
+}

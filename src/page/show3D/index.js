@@ -1,6 +1,7 @@
 import { MODELS } from '../../utils/models.js'
 import { currentModelIndex, _modelHasContent } from '../../main.js'
 import { buildNavbar } from '../../components/Navibar.js'
+import './index.css'
 // ─────────────────────────────────────────────
 // 3D展厅页（原非遗展示页，结构几乎不变）
 // ─────────────────────────────────────────────
