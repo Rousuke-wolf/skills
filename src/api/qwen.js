@@ -1,6 +1,6 @@
 // qwen.js
 import OpenAI from "openai";
-import { heritageListJSON } from "../models.js";
+import { heritageListJSON } from "../utils/models.js";
 
 const openai = new OpenAI({
   apiKey: "sk-77aee8a61cab46a18ab2ba7487223716",
