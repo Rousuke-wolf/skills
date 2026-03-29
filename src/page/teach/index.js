@@ -1,10 +1,8 @@
-// ─────────────────────────────────────────────
-// 教学体验页（原 AI 对话页 + 步骤/动画区）
-// ─────────────────────────────────────────────
 // ./page/teach/index.js
 import { buildNavbar } from "../../components/Navibar";
-import './scripts.js'
-import './index.css'
+import './scripts.js';
+import './index.css';
+import './game/index.js'
 
 export default function buildTeachingPage() {
   return `
@@ -13,7 +11,6 @@ export default function buildTeachingPage() {
 
       <div class="main-dashboard teaching-dashboard">
 
-        <!-- 左侧：数字人引导区 -->
         <div class="left-stage">
           <div class="section-label">数字人引导区</div>
           <div class="character-section">
@@ -27,24 +24,27 @@ export default function buildTeachingPage() {
           </div>
         </div>
 
-        <!-- 右侧：动画演示 + 步骤 + 控制 -->
         <div class="right-panel">
 
-          <!-- 动画演示区 -->
           <div class="section-label">动画演示区</div>
           <div class="demo-canvas-box">
             <div class="demo-visual" id="demoVisual">
-              <!-- Canvas 由 updateDemo() 注入 -->
-            </div>
+              </div>
           </div>
 
-          <!-- 步骤教学区 -->
-          <div class="section-header" style="margin-top:20px;">
+          <div class="section-header" style="margin-top:20px; display: flex; align-items: center; justify-content: space-between;">
             <div class="section-label">步骤教学区</div>
-            <button id="playPauseBtn" class="demo-icon-btn" onclick="toggleStitchAnimation()">
-              <span class="icon-pause"></span>
-            </button>
+            
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button class="glass-game-btn" onclick="openModal()">
+                <span class="btn-icon">🎮</span>
+              </button>
+              <button id="playPauseBtn" class="demo-icon-btn" onclick="toggleStitchAnimation()">
+                <span class="icon-pause"></span>
+              </button>
+            </div>
           </div>
+          
           <div class="step-cards-row">
             <div class="step-card step-active" onclick="selectStep(this)">
               <div class="step-num">1</div>
@@ -63,28 +63,25 @@ export default function buildTeachingPage() {
             </div>
           </div>
 
-          <!-- 针法 & 绣种选择 -->
           <div class="stitch-controls">
             <div class="control-row">
               <span class="control-label">选择针法</span>
               <button class="pill-btn pill-active" data-stitch="flat"    onclick="selectPill(this); updateDemo()">平针</button>
-              <button class="pill-btn"              data-stitch="back"    onclick="selectPill(this); updateDemo()">回针</button>
-              <button class="pill-btn"              data-stitch="blanket" onclick="selectPill(this); updateDemo()">锁边针</button>
+              <button class="pill-btn"             data-stitch="back"    onclick="selectPill(this); updateDemo()">回针</button>
+              <button class="pill-btn"             data-stitch="blanket" onclick="selectPill(this); updateDemo()">锁边针</button>
             </div>
             <div class="control-row">
               <span class="control-label">选择刺绣类型</span>
               <button class="pill-btn pill-active" data-type="su"   onclick="selectPill(this); updateDemo()">苏绣</button>
-              <button class="pill-btn"              data-type="miao" onclick="selectPill(this); updateDemo()">苗绣</button>
+              <button class="pill-btn"             data-type="miao" onclick="selectPill(this); updateDemo()">苗绣</button>
             </div>
           </div>
-          <!-- 当前针法说明 -->
           <div class="demo-info-bar">
             <span class="demo-title" id="demoTitle">平针 · 苏绣</span>
             <span class="demo-desc"  id="demoDesc">针头沿平行丝线细腻均匀地平稳推进，线迹紧密光洁，适合大面积渐变填充。</span>
           </div>
-
         </div>
       </div>
     </div>
-     `
+  `;
 }
