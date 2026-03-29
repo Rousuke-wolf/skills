@@ -39,7 +39,12 @@ export default function buildTeachingPage() {
           </div>
 
           <!-- 步骤教学区 -->
-          <div class="section-label" style="margin-top:20px;">步骤教学区</div>
+          <div class="section-header" style="margin-top:20px;">
+            <div class="section-label">步骤教学区</div>
+            <button id="playPauseBtn" class="demo-icon-btn" onclick="toggleStitchAnimation()">
+              <span class="icon-pause"></span>
+            </button>
+          </div>
           <div class="step-cards-row">
             <div class="step-card step-active" onclick="selectStep(this)">
               <div class="step-num">1</div>
@@ -72,7 +77,6 @@ export default function buildTeachingPage() {
               <button class="pill-btn"              data-type="miao" onclick="selectPill(this); updateDemo()">苗绣</button>
             </div>
           </div>
-
           <!-- 当前针法说明 -->
           <div class="demo-info-bar">
             <span class="demo-title" id="demoTitle">平针 · 苏绣</span>
