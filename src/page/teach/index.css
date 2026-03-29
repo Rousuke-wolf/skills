@@ -110,17 +110,33 @@
 .demo-canvas-box {
   background: #fffefb;
   border: 1px solid #e8e0d0;
+  /* 外层浅色边框（保持原有） */
   border-radius: 14px;
   overflow: hidden;
   flex-shrink: 0;
   height: 350px;
   margin-bottom: 4px;
+
+  /* 关键：留出内边距，为内部棕色卡片腾出空间 */
+  padding: 42px;
+  /* 可调整为 10px~16px，根据视觉粗细 */
 }
 
 .demo-visual {
   width: 100%;
   height: 100%;
   position: relative;
+
+  /* 内部棕色粗边框卡片 */
+  background: #fffef8;
+  /* 比原来 #fffefb 更亮一点，偏暖白 */
+  border: 4px solid rgb(140, 102, 66, 0.7);
+  /* 保持你喜欢的棕色粗框 */
+  border-radius: 40px;
+  overflow: hidden;
+
+  /* 可选：轻微内阴影增强卡片感 */
+  box-shadow: inset 0 2px 10px rgba(140, 102, 66, 0.12);
 }
 
 #stitchCanvas {
@@ -257,4 +273,84 @@
   font-size: 12px;
   color: #9a8060;
   line-height: 1.65;
+}
+
+/* ── 动画控制栏 ── */
+.demo-controls {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0 16px;
+}
+
+.demo-controls button {
+  padding: 8px 28px;
+  font-size: 15px;
+  min-width: 120px;
+}
+
+/* ── 标题行布局 ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── 图标按钮（更大更舒服） ── */
+.demo-icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid #c8a878;
+  background: linear-gradient(135deg, #c8a060 0%, #a07840 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* hover */
+.demo-icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(160, 120, 60, 0.3);
+}
+
+/* ── 暂停图标（两条竖线） ── */
+.icon-pause {
+  width: 12px;
+  height: 14px;
+  position: relative;
+}
+
+.icon-pause::before,
+.icon-pause::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 100%;
+  background: #fff;
+  border-radius: 1px;
+}
+
+.icon-pause::before {
+  left: 0;
+}
+
+.icon-pause::after {
+  right: 0;
+}
+
+/* ── 播放图标（三角形） ── */
+.icon-play {
+  width: 0;
+  height: 0;
+  border-left: 12px solid #fff;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+}
+
+/* ── 暂停状态（颜色变化） ── */
+.demo-icon-btn.paused {
+  background: #eee3d0;
+  border-color: #d4c4a8;
 }
