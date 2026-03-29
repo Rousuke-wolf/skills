@@ -11,16 +11,50 @@ let chatHistoryData = [
 ];
 
 // ── 输入锁：模块级，供 stop 按钮随时解锁 ────────
-let _replyStopped = false;   // 标记"已被手动结束"
+let _replyStopped = false;
+
+function lockInput() {
+    _replyStopped = false;
+    window._cultureInputLocked = true;
+    const sendBtn   = document.getElementById("sendBtn");
+    const input     = document.getElementById("textInput");
+    const inputArea = sendBtn?.closest(".input-area");
+    if (sendBtn)   sendBtn.disabled = true;
+    if (input)     input.disabled = true;
+    if (inputArea) inputArea.classList.add("sending");
+    // 禁用所有知识卡片
+    document.querySelectorAll(".culture-mini-card").forEach(c => {
+        c.style.pointerEvents = "none";
+        c.style.opacity = "0.45";
+    });
+    // 禁用换一批按钮
+    const refreshBtn = document.querySelector(".culture-cards-refresh");
+    if (refreshBtn) {
+        refreshBtn.style.pointerEvents = "none";
+        refreshBtn.style.opacity = "0.45";
+    }
+}
 
 function unlockInput() {
     _replyStopped = true;
-    const sendBtn  = document.getElementById("sendBtn");
-    const input    = document.getElementById("textInput");
+    window._cultureInputLocked = false;
+    const sendBtn   = document.getElementById("sendBtn");
+    const input     = document.getElementById("textInput");
     const inputArea = sendBtn?.closest(".input-area");
-    if (sendBtn)   { sendBtn.disabled = false; }
-    if (input)     { input.disabled = false; }
-    if (inputArea) { inputArea.classList.remove("sending"); }
+    if (sendBtn)   sendBtn.disabled = false;
+    if (input)     input.disabled = false;
+    if (inputArea) inputArea.classList.remove("sending");
+    // 恢复所有知识卡片
+    document.querySelectorAll(".culture-mini-card").forEach(c => {
+        c.style.pointerEvents = "";
+        c.style.opacity = "";
+    });
+    // 恢复换一批按钮
+    const refreshBtn = document.querySelector(".culture-cards-refresh");
+    if (refreshBtn) {
+        refreshBtn.style.pointerEvents = "";
+        refreshBtn.style.opacity = "";
+    }
 }
 
 // ─────────────────────────────────────────────
@@ -49,7 +83,8 @@ window.updateVoiceSetting = function (key, value) {
 // ─────────────────────────────────────────────
 let _typingTimer = null;
 let _typingPaused = false;
-let _typingResume = null; // 暂停时保存的恢复函数
+let _typingResume = null;  // 暂停时保存 tick，用于 resume 继续
+let _typingResolve = null; // 保存 Promise 的 resolve，stopTyping 直接调用结束 await
 
 function pauseTyping() {
     _typingPaused = true;
@@ -59,14 +94,15 @@ function pauseTyping() {
 function resumeTyping() {
     if (!_typingPaused || !_typingResume) return;
     _typingPaused = false;
-    _typingResume(); // 从暂停处继续
+    _typingResume(); // 从暂停处继续 tick
 }
 
 function stopTyping() {
     _typingPaused = false;
-    if (_typingResume) { _typingResume(); }   // ← resolve 挂起的 await，让 appendAIStream 正常返回
     _typingResume = null;
     if (_typingTimer) { clearTimeout(_typingTimer); _typingTimer = null; }
+    // 直接 resolve Promise，让 await 立刻返回
+    if (_typingResolve) { _typingResolve(); _typingResolve = null; }
 }
 
 
@@ -141,7 +177,7 @@ function updateTtsButtons(playing) {
 window.quickQuestion = function (question) {
     const history = document.getElementById("chatHistory");
     if (!history) return;
-    interruptCurrent();
+    lockInput();
     appendUser(question);
     appendThinking();
     (async () => {
@@ -149,6 +185,7 @@ window.quickQuestion = function (question) {
             chatHistoryData.push({ role: "user", content: question });
             chatHistoryData.push({ role: "assistant", content: res.message });
         });
+        if (!_replyStopped) unlockInput();
     })();
 };
 
@@ -249,6 +286,7 @@ async function appendAIStream(historyMessages, userInput, onDone) {
 
     stopTyping();
     await new Promise(resolve => {
+        _typingResolve = resolve;   // ← 存起来，stopTyping 可直接结束 await
         function tick() {
             if (_typingPaused) { _typingResume = tick; return; }
             if (i < message.length) {
@@ -454,14 +492,7 @@ function bindEvents() {
         sendBtn.onclick = async () => {
             const text = input.value.trim();
             if (!text) return;
-            // ── 发送锁：回复期间禁用输入，不打断当前回复 ──
-            const inputArea = sendBtn.closest('.input-area');
-            _replyStopped = false;
-            sendBtn.disabled = true;
-            input.disabled = true;
-            if (inputArea) inputArea.classList.add('sending');
-
-            // 不调 interruptCurrent()，不打断正在进行的回复
+            lockInput();
             appendUser(text);
             input.value = "";
             appendThinking();
@@ -469,8 +500,6 @@ function bindEvents() {
                 chatHistoryData.push({ role: "user", content: text });
                 chatHistoryData.push({ role: "assistant", content: res.message });
             });
-
-            // 若 stop 按钮已提前解锁，不再重复操作
             if (!_replyStopped) {
                 unlockInput();
                 input.focus();
@@ -604,7 +633,12 @@ function bindEvents() {
                 startBtn.textContent = "🎙";
                 voiceStatus.innerText = "点击麦克风开始说话";
             } else {
-                // 未录音 → 点击开始
+                // 未录音 → 点击开始：先打断大模型当前发言
+                stop();
+                stopTyping();
+                updateTtsButtons(false);
+                if (typeof window.stopLipsync === "function") window.stopLipsync();
+                // 再开始录音
                 if (!recognition) recognition = initRecognition(voiceStatus);
                 if (recognition) {
                     recognition.start();

@@ -150,7 +150,6 @@ export default function buildCulturePage() {
 window.refreshCultureCards = function () {
   const grid = document.getElementById('cultureCardGrid');
   if (!grid) return;
-  // 退场动画
   grid.style.opacity = '0';
   grid.style.transform = 'translateY(6px)';
   grid.style.transition = 'opacity 0.18s, transform 0.18s';
@@ -158,5 +157,12 @@ window.refreshCultureCards = function () {
     grid.innerHTML = buildCards(pickRandom4());
     grid.style.opacity = '1';
     grid.style.transform = 'translateY(0)';
+    // 刷新后若仍处于锁定状态，重新禁用新卡片
+    if (window._cultureInputLocked) {
+      document.querySelectorAll('.culture-mini-card').forEach(c => {
+        c.style.pointerEvents = 'none';
+        c.style.opacity = '0.45';
+      });
+    }
   }, 180);
 }

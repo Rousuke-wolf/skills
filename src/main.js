@@ -1,13 +1,13 @@
 import './style.css'
 import './script'
-import { MODELS } from './utils/models.js'                    // ← 必须加上这一行（修复 currentModelIndex 相关报错的关键）
+import { MODELS } from './utils/models.js'                    
 
-// 页面构建函数导入（你现有的）
+// 页面构建函数导入
 import buildHomePage from './page/home/index.js'
 import buildCulturePage from './page/culture/index.js'
 import buildTeachingPage from './page/teach/index.js'
 import buildAboutPage from './page/about/index.js'
-import { build3DPage, buildModelDropdown } from './page/show3D/index.js'   // ← 必须同时导入 buildModelDropdown
+import { build3DPage, buildModelDropdown } from './page/show3D/index.js'  
 
 export let currentModelIndex = 0
 let currentPage = 'home'

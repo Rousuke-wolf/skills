@@ -8,21 +8,16 @@
 body {
   background: white;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
+  padding: 0;
+  display: block;
 }
 
-/* 主容器：严格遵循排版描述：导航栏(可选) + 主内容区 */
 .app-wrapper {
-  width: 1600px;
+  width: 100%;
+  min-height: 100vh;
   max-width: 100%;
-  background: #10141c;
-  border-radius: 36px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 0;
+  border-radius: 0 0 36px 36px; /* 只保留下方圆角 */
 }
 
 /* 导航栏 (可选) — 极简轻量 */
