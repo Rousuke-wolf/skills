@@ -5,17 +5,27 @@
 
 /* ── CSS 变量（仅本页作用域） ────────────────── */
 .page-culture {
-  --c-bg:        #faf6ef;       /* 页面底色：奶油米白 */
-  --c-bg2:       #f3ece0;       /* 次级底色：暖米色 */
-  --c-panel:     #ffffff;       /* 面板白 */
-  --c-border:    #e2d5c3;       /* 描边：暖棕描边 */
-  --c-brown:     #8b6240;       /* 主棕 */
-  --c-dark:      #3d1f0a;       /* 深棕文字 */
-  --c-mid:       #6b4a2a;       /* 中棕文字 */
-  --c-light:     #b08060;       /* 浅棕 / 次要文字 */
-  --c-gold:      #c9984a;       /* 棕金强调 */
-  --c-red:       #c0392b;       /* 红色点缀 */
-  --c-shadow:    rgba(92,61,32,0.10);
+  --c-bg: #faf6ef;
+  /* 页面底色：奶油米白 */
+  --c-bg2: #f3ece0;
+  /* 次级底色：暖米色 */
+  --c-panel: #ffffff;
+  /* 面板白 */
+  --c-border: #e2d5c3;
+  /* 描边：暖棕描边 */
+  --c-brown: #8b6240;
+  /* 主棕 */
+  --c-dark: #3d1f0a;
+  /* 深棕文字 */
+  --c-mid: #6b4a2a;
+  /* 中棕文字 */
+  --c-light: #b08060;
+  /* 浅棕 / 次要文字 */
+  --c-gold: #c9984a;
+  /* 棕金强调 */
+  --c-red: #c0392b;
+  /* 红色点缀 */
+  --c-shadow: rgba(92, 61, 32, 0.10);
 }
 
 /* ── 覆盖全局 body/app-wrapper 背景 ─────────── */
@@ -112,9 +122,9 @@
 }
 
 .culture-left .emotion-btn.active {
-  background: rgba(139,98,64,0.10);
+  background: rgba(139, 98, 64, 0.10);
   color: var(--c-brown);
-  border: 1px solid rgba(139,98,64,0.25);
+  border: 1px solid rgba(139, 98, 64, 0.25);
 }
 
 /* ════════════════════════════════════════════════
@@ -181,9 +191,17 @@
   flex-shrink: 0;
 }
 
-.culture-chat-panel .vs-label { color: var(--c-mid) !important; }
-.culture-chat-panel .vs-val   { color: var(--c-gold) !important; }
-.culture-chat-panel .vs-slider { accent-color: var(--c-gold) !important; }
+.culture-chat-panel .vs-label {
+  color: var(--c-mid) !important;
+}
+
+.culture-chat-panel .vs-val {
+  color: var(--c-gold) !important;
+}
+
+.culture-chat-panel .vs-slider {
+  accent-color: var(--c-gold) !important;
+}
 
 /* 对话历史 */
 .culture-chat-panel .chat-history {
@@ -220,12 +238,18 @@
 
 /* 欢迎横幅 */
 .culture-chat-panel .welcome-banner {
-  background: linear-gradient(135deg, rgba(139,98,64,0.07), rgba(201,152,74,0.05)) !important;
-  border: 1px solid rgba(139,98,64,0.18) !important;
+  background: linear-gradient(135deg, rgba(139, 98, 64, 0.07), rgba(201, 152, 74, 0.05)) !important;
+  border: 1px solid rgba(139, 98, 64, 0.18) !important;
 }
 
-.culture-chat-panel .welcome-name  { color: var(--c-dark) !important; }
-.culture-chat-panel .welcome-body  { color: var(--c-mid) !important; }
+.culture-chat-panel .welcome-name {
+  color: var(--c-dark) !important;
+}
+
+.culture-chat-panel .welcome-body {
+  color: var(--c-mid) !important;
+}
+
 .culture-chat-panel .welcome-avatar {
   background: url('/avatar.png') center / cover no-repeat !important;
   color: transparent !important;
@@ -258,7 +282,7 @@
 
 .culture-chat-panel .input-area button:first-of-type:hover {
   background: var(--c-dark) !important;
-  box-shadow: 0 0 12px rgba(139,98,64,0.35) !important;
+  box-shadow: 0 0 12px rgba(139, 98, 64, 0.35) !important;
 }
 
 .culture-chat-panel .tts-control-btn {
@@ -273,7 +297,7 @@
 }
 
 .culture-chat-panel .tts-control-btn.active {
-  background: rgba(139,98,64,0.10) !important;
+  background: rgba(139, 98, 64, 0.10) !important;
   border-color: var(--c-brown) !important;
   color: var(--c-brown) !important;
 }
@@ -307,8 +331,13 @@
   transform: translateY(-2px);
 }
 
-.culture-suggest .suggest-card-title { color: var(--c-dark) !important; }
-.culture-suggest .suggest-card-desc  { color: var(--c-light) !important; }
+.culture-suggest .suggest-card-title {
+  color: var(--c-dark) !important;
+}
+
+.culture-suggest .suggest-card-desc {
+  color: var(--c-light) !important;
+}
 
 /* ════════════════════════════════════════════════
    右下：文化知识卡片区
@@ -375,8 +404,10 @@
 .culture-mini-card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0;
-  width: 3px; height: 100%;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
   background: var(--c-gold);
   border-radius: 3px 0 0 3px;
   opacity: 0;
@@ -397,7 +428,7 @@
 .mini-card-num {
   font-size: 20px;
   font-weight: 800;
-  color: rgba(139,98,64,0.15);
+  color: rgba(139, 98, 64, 0.15);
   line-height: 1;
   font-family: Georgia, serif;
 }
@@ -420,8 +451,15 @@
 }
 
 /* ── 语音模式：左侧全屏数字人 ───────────────── */
-.voice-mode .culture-right  { display: none; }
-.voice-mode .culture-left   { width: 100%; min-width: 0; border-right: none; }
+.voice-mode .culture-right {
+  display: none;
+}
+
+.voice-mode .culture-left {
+  width: 100%;
+  min-width: 0;
+  border-right: none;
+}
 
 /* 语音浮层也用暖色 */
 .page-culture .voice-control-panel {
@@ -430,7 +468,9 @@
   box-shadow: 0 8px 32px var(--c-shadow) !important;
 }
 
-.page-culture .voice-status { color: var(--c-mid) !important; }
+.page-culture .voice-status {
+  color: var(--c-mid) !important;
+}
 
 .page-culture .voice-mic-btn {
   border-color: var(--c-border) !important;
@@ -455,7 +495,10 @@
 }
 
 /* 滚动条 */
-.page-culture .chat-history::-webkit-scrollbar { width: 4px; }
+.page-culture .chat-history::-webkit-scrollbar {
+  width: 4px;
+}
+
 .page-culture .chat-history::-webkit-scrollbar-thumb {
   background: var(--c-border);
   border-radius: 2px;
@@ -463,9 +506,23 @@
 
 /* ── 响应式 ──────────────────────────────────── */
 @media (max-width: 1024px) {
-  .culture-dashboard { flex-direction: column; height: auto; overflow-y: auto; }
-  .culture-left { width: 100%; min-width: 0; height: 360px; border-right: none; border-bottom: 1px solid var(--c-border); }
-  .culture-mini-grid { grid-template-columns: repeat(2, 1fr); }
+  .culture-dashboard {
+    flex-direction: column;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .culture-left {
+    width: 100%;
+    min-width: 0;
+    height: 360px;
+    border-right: none;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  .culture-mini-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* ── 两列快捷提问 + 聊天框加高 ────────────── */
@@ -491,10 +548,21 @@
   gap: 4px !important;
 }
 
-.mini-card-num  { font-size: 16px !important; }
-.mini-card-emoji { font-size: 16px !important; }
-.mini-card-name  { font-size: 13px !important; }
-.mini-card-tag   { font-size: 11px !important; }
+.mini-card-num {
+  font-size: 16px !important;
+}
+
+.mini-card-emoji {
+  font-size: 16px !important;
+}
+
+.mini-card-name {
+  font-size: 13px !important;
+}
+
+.mini-card-tag {
+  font-size: 11px !important;
+}
 
 /* ── 聊天区放大 ───────────────────────────────── */
 .culture-chat-panel {
@@ -612,4 +680,47 @@
   flex: 1 1 0 !important;
   min-height: 0 !important;
   margin-bottom: 8px !important;
+}
+
+/* ── Live2D 对话气泡 ── */
+.culture-left .character-section {
+  position: relative;
+}
+
+.live2d-bubble {
+  position: absolute;
+  top: 10px;
+  right: -10px;
+  width: 240px;
+  z-index: 20;
+  pointer-events: none;
+  transform-origin: bottom left;
+}
+
+.live2d-bubble.hidden {
+  display: none;
+}
+
+.bubble-svg {
+  width: 100%;
+  height: auto;
+  animation: bubblePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes bubblePop {
+  from {
+    opacity: 0;
+    transform: scale(0.7) translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.voice-mode #live2dBubble {
+  top: 5%;
+  right: 18%;
+  width: 260px;
 }
