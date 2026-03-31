@@ -3,22 +3,24 @@
 // 布局：左侧 Live2D + 情绪 / 右上聊天 / 右下知识卡片（随机4张）
 // ─────────────────────────────────────────────
 import { buildNavbar } from "../../components/Navibar";
+import './script.js'
 import './index.css';
+import svgPic from './vector.js'
 
 // ── 知识卡片数据池（共 12 张，随机取 4）────────
 const CULTURE_CARDS = [
-  { emoji: '🧵', name: '苏绣',     tag: '精细雅洁 · 双面绣',     q: '请详细介绍苏绣的特点和代表作品' },
-  { emoji: '🦁', name: '湘绣',     tag: '毛针质感 · 豪放气质',   q: '请详细介绍湘绣的特点和代表作品' },
-  { emoji: '🐼', name: '蜀绣',     tag: '疏朗明快 · 天府风韵',   q: '请详细介绍蜀绣的特点和代表作品' },
-  { emoji: '🦚', name: '粤绣',     tag: '饱满浓烈 · 岭南风情',   q: '请详细介绍粤绣的特点和代表作品' },
-  { emoji: '🌺', name: '苗绣',     tag: '几何纹样 · 民族特色',   q: '请介绍苗绣的历史文化和特色纹样' },
-  { emoji: '🪡', name: '平针',     tag: '最基础的刺绣针法',       q: '什么是平针？如何操作平针？' },
-  { emoji: '↩️', name: '回针',     tag: '轮廓线条的常用针法',     q: '什么是回针？它有什么用途？' },
-  { emoji: '🔗', name: '锁边针',   tag: '装饰与加固边缘',         q: '请介绍锁边针的特点和使用场景' },
-  { emoji: '🌸', name: '缎针',     tag: '光滑填充 · 缎面效果',   q: '什么是缎针？如何绣出缎面质感？' },
-  { emoji: '📜', name: '非遗历史', tag: '2006年列入国家名录',     q: '中国刺绣非遗的历史和保护现状是什么？' },
-  { emoji: '🎨', name: '色彩搭配', tag: '刺绣配色艺术',           q: '传统刺绣的色彩搭配有哪些讲究？' },
-  { emoji: '✂️', name: '绣布工具', tag: '绣绷 · 绣针 · 丝线',   q: '刺绣需要准备哪些基本工具和材料？' },
+  { emoji: '🧵', name: '苏绣', tag: '精细雅洁 · 双面绣', q: '请详细介绍苏绣的特点和代表作品' },
+  { emoji: '🦁', name: '湘绣', tag: '毛针质感 · 豪放气质', q: '请详细介绍湘绣的特点和代表作品' },
+  { emoji: '🐼', name: '蜀绣', tag: '疏朗明快 · 天府风韵', q: '请详细介绍蜀绣的特点和代表作品' },
+  { emoji: '🦚', name: '粤绣', tag: '饱满浓烈 · 岭南风情', q: '请详细介绍粤绣的特点和代表作品' },
+  { emoji: '🌺', name: '苗绣', tag: '几何纹样 · 民族特色', q: '请介绍苗绣的历史文化和特色纹样' },
+  { emoji: '🪡', name: '平针', tag: '最基础的刺绣针法', q: '什么是平针？如何操作平针？' },
+  { emoji: '↩️', name: '回针', tag: '轮廓线条的常用针法', q: '什么是回针？它有什么用途？' },
+  { emoji: '🔗', name: '锁边针', tag: '装饰与加固边缘', q: '请介绍锁边针的特点和使用场景' },
+  { emoji: '🌸', name: '缎针', tag: '光滑填充 · 缎面效果', q: '什么是缎针？如何绣出缎面质感？' },
+  { emoji: '📜', name: '非遗历史', tag: '2006年列入国家名录', q: '中国刺绣非遗的历史和保护现状是什么？' },
+  { emoji: '🎨', name: '色彩搭配', tag: '刺绣配色艺术', q: '传统刺绣的色彩搭配有哪些讲究？' },
+  { emoji: '✂️', name: '绣布工具', tag: '绣绷 · 绣针 · 丝线', q: '刺绣需要准备哪些基本工具和材料？' },
 ];
 
 function pickRandom4() {
@@ -51,6 +53,26 @@ export default function buildCulturePage() {
           <div class="character-section">
             <div class="character-3d">
               <canvas id="live2d" style="width:100%;height:100%;display:block;"></canvas>
+            </div>
+            <!-- ═══ Live2D 对话气泡 ═══ -->
+            <div id="live2dBubble" class="live2d-bubble hidden">
+              ${svgPic}
+                 <defs>
+                  <filter id="wobble" x="-10%" y="-10%" width="125%" height="130%">
+                    <feTurbulence type="turbulence" baseFrequency="0.06 0.06" numOctaves="2" seed="7" result="noise"/>
+                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+                  </filter>
+                </defs>
+                <path d="M 92 22 C 100 14,112 9,128 8 C 158 6,198 5,235 5 C 268 5,298 6,320 8 C 338 10,352 15,360 22 C 368 29,370 38,370 50 C 370 64,370 78,369 90 C 368 102,365 112,358 119 C 349 127,334 131,312 132 C 280 133,245 133,212 133 C 184 133,158 132,138 130 C 116 128,100 120,95 108 C 90 96,90 80,91 64 C 92 48,92 30,92 22 Z"
+                  fill="#aaa" transform="translate(7,7)"/>
+                <path class="bubble-body" d="M 92 22 C 100 14,112 9,128 8 C 158 6,198 5,235 5 C 268 5,298 6,320 8 C 338 10,352 15,360 22 C 368 29,370 38,370 50 C 370 64,370 78,369 90 C 368 102,365 112,358 119 C 349 127,334 131,312 132 C 280 133,245 133,212 133 C 184 133,158 132,138 130 C 116 128,100 120,95 108 C 90 96,90 80,91 64 C 92 48,92 30,92 22 Z"
+                  fill="white" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" filter="url(#wobble)"/>
+                <path d="M 100 130 Q 72 158 55 195 Q 78 162 118 132 Z" fill="white"/>
+                <path d="M 98 132 Q 68 162 52 197" fill="none" stroke="#1a1a1a" stroke-width="3.8" stroke-linecap="round" filter="url(#wobble)"/>
+                <path d="M 118 132 Q 90 165 72 197" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round" filter="url(#wobble)"/>
+                <text id="bubbleText"  x="210" y="55"  text-anchor="middle" font-size="18" fill="#111" font-weight="600" font-family="sans-serif"></text>
+                <text id="bubbleText2" x="210" y="82"  text-anchor="middle" font-size="18" fill="#111" font-weight="600" font-family="sans-serif"></text>
+                <text id="bubbleText3" x="210" y="109" text-anchor="middle" font-size="18" fill="#111" font-weight="600" font-family="sans-serif"></text>              </svg>
             </div>
             <div class="emotion-switch">
               <button class="emotion-btn active" onclick="setEmotion('happy')">😊 <span>开心</span></button>
@@ -146,23 +168,3 @@ export default function buildCulturePage() {
   `
 }
 
-// ── 刷新卡片（全局，onclick 调用）─────────────
-window.refreshCultureCards = function () {
-  const grid = document.getElementById('cultureCardGrid');
-  if (!grid) return;
-  grid.style.opacity = '0';
-  grid.style.transform = 'translateY(6px)';
-  grid.style.transition = 'opacity 0.18s, transform 0.18s';
-  setTimeout(() => {
-    grid.innerHTML = buildCards(pickRandom4());
-    grid.style.opacity = '1';
-    grid.style.transform = 'translateY(0)';
-    // 刷新后若仍处于锁定状态，重新禁用新卡片
-    if (window._cultureInputLocked) {
-      document.querySelectorAll('.culture-mini-card').forEach(c => {
-        c.style.pointerEvents = 'none';
-        c.style.opacity = '0.45';
-      });
-    }
-  }, 180);
-}
