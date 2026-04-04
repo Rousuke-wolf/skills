@@ -13,7 +13,7 @@ export function buildModelDropdown() {
     <div class="model-dropdown-bar">
       <label class="model-dropdown-label">🏮 选择展品</label>
       <select class="model-dropdown" id="modelDropdown" onchange="onDropdownChange(this.value)">
-        <option value="" selected disabled>请选择刺绣展品...</option>
+        <option value="" selected disabled>请选择文化展品...</option>
         ${options}
       </select>
     </div>
@@ -70,7 +70,7 @@ export function build3DPage(hasModel = false) {
               </div>
             </div>
             <div class="model-info-name" id="modelInfoName">${hasModel ? model.name : ''}</div>
-            <div class="model-info-text" id="modelIntroText">${hasModel ? model.intro : '暂无展品，请通过上方下拉框或 AI 讲解员选择要展示的刺绣展品。'}</div>
+            <div class="model-info-text" id="modelIntroText">${hasModel ? model.intro : '暂无展品，请通过上方下拉框或 AI 讲解员选择要展示的文化展品。'}</div>
             <div class="audio-status" id="audioStatus"></div>
           </div>
         </div>
