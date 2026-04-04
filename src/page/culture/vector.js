@@ -39,10 +39,12 @@ const svgPic = `
 
   <!-- ==================== 新增文字（三行，支持 JS 动态修改） ==================== -->
   <!-- 文字位置已居中在气泡主体区域，字体大小适配新尺寸 -->
-  <text id="bubbleText" x="304" y="205" text-anchor="middle" font-size="28" fill="#111" font-weight="600" font-family="sans-serif" style="pointer-events: none;"></text>
-  <text id="bubbleText2" x="304" y="245" text-anchor="middle" font-size="28" fill="#111" font-weight="600" font-family="sans-serif" style="pointer-events: none;"></text>
-  <text id="bubbleText3" x="304" y="285" text-anchor="middle" font-size="28" fill="#111" font-weight="600" font-family="sans-serif" style="pointer-events: none;"></text>
-
+  <text id="bubbleText" x="304" y="205" text-anchor="middle" font-size="28" fill="#111" font-weight="600" font-family="sans-serif" style="pointer-events: none; transform-box: fill-box; transform-origin: center;">
+  </text>
+  <text id="bubbleText2" x="304" y="245" text-anchor="middle" font-size="28" fill="#111" font-weight="600" font-family="sans-serif" style="pointer-events: none; transform-box: fill-box; transform-origin: center;">
+  </text>
+  <text id="bubbleText3" x="304" y="285" text-anchor="middle" font-size="28" fill="#111" font-weight="600" font-family="sans-serif" style="pointer-events: none; transform-box: fill-box; transform-origin: center;">
+  </text>
 </svg>
 `
 

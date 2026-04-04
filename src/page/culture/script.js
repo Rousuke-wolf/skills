@@ -31,18 +31,38 @@ window.showSpeechBubble = function (lines) {
   const t2 = document.getElementById('bubbleText2');
   const t3 = document.getElementById('bubbleText3');
   if (!bubble || !t1) return;
+
   t1.textContent = lines[0] || '';
   t2.textContent = lines[1] || '';
   t3.textContent = lines[2] || '';
 
-  // 随机位置偏移
-  const topOffset = 4 + Math.random() * 8;    // 4%~12%
-  const rightOffset = 12 + Math.random() * 12; // 12%~24%
+  const isLeft = Math.random() > 0.5;
+  const topOffset = 4 + Math.random() * 10;
   bubble.style.top = topOffset + '%';
-  bubble.style.right = rightOffset + '%';
+  bubble.style.transform = '';
+
+  const svg = bubble.querySelector('.bubble-svg');
+
+  // 先设置 class
+  if (isLeft) {
+    svg.classList.add('flipped');
+    bubble.style.right = 'auto';
+    bubble.style.left = (8 + Math.random() * 10) + '%';
+    t1.style.transform = 'scaleX(-1)';
+    t2.style.transform = 'scaleX(-1)';
+    t3.style.transform = 'scaleX(-1)';
+  } else {
+    svg.classList.remove('flipped');
+    bubble.style.left = 'auto';
+    bubble.style.right = (10 + Math.random() * 14) + '%';
+    t1.style.transform = '';
+    t2.style.transform = '';
+    t3.style.transform = '';
+  }
 
   bubble.classList.remove('hidden');
-  const svg = bubble.querySelector('.bubble-svg');
+
+  // 重置动画
   if (svg) {
     svg.style.animation = 'none';
     svg.offsetHeight;
