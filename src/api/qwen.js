@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { heritageListJSON } from "../utils/models.js";
 
 const openai = new OpenAI({
-  apiKey: "sk-bb2f9a5781d247568259cb014695d29a",
+  apiKey: "sk-77aee8a61cab46a18ab2ba7487223716",
   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
   dangerouslyAllowBrowser: true
 });
@@ -44,7 +44,7 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "qwen3-8b",
+      model: "qwen3-30b-a3b",
       messages,
       stream: true
     });
@@ -91,7 +91,7 @@ export async function chatWithAI(historyMessages = [], userInput) {
       { role: "user", content: userInput }
     ];
     const completion = await openai.chat.completions.create({
-      model: "qwen-plus",
+      model: "qwen3-30b-a3b",
       messages
     });
     const raw = completion.choices[0].message.content.trim();
