@@ -3,24 +3,51 @@
 // 布局：左侧 Live2D + 情绪 / 右上聊天 / 右下知识卡片（随机4张）
 // ─────────────────────────────────────────────
 import { buildNavbar } from "../../components/Navibar";
-import './script.js'
 import './index.css';
-import svgPic from './vector.js'
+
+// ── 保存文化页聊天历史（切页时保留）────────────
+let _cultureChatHTML = null;
+
+// 供 main.js 的 renderApp 在离开文化页时调用
+window.saveCultureChat = function () {
+  const el = document.getElementById('chatHistory');
+  if (el) _cultureChatHTML = el.innerHTML;
+};
+
+// 供 renderApp 在进入文化页时调用（buildCulturePage 内部调用）
+function restoreCultureChat() {
+  if (_cultureChatHTML === null) return;
+  requestAnimationFrame(() => {
+    const el = document.getElementById('chatHistory');
+    if (el) {
+      el.innerHTML = _cultureChatHTML;
+      el.scrollTop = el.scrollHeight;
+      // 如果打字动画仍在进行，把 id 重新挂到最后一个 AI 气泡上
+      // tick 下一次执行时通过 getElementById 找到它，继续输出
+      if (window._typingInProgress) {
+        const bubbles = el.querySelectorAll('.message.ai');
+        if (bubbles.length > 0) {
+          bubbles[bubbles.length - 1].id = '_typingBubble';
+        }
+      }
+    }
+  });
+}
 
 // ── 知识卡片数据池（共 12 张，随机取 4）────────
 const CULTURE_CARDS = [
-  { emoji: '🧵', name: '苏绣', tag: '精细雅洁 · 双面绣', q: '请详细介绍苏绣的特点和代表作品' },
-  { emoji: '🦁', name: '湘绣', tag: '毛针质感 · 豪放气质', q: '请详细介绍湘绣的特点和代表作品' },
-  { emoji: '🐼', name: '蜀绣', tag: '疏朗明快 · 天府风韵', q: '请详细介绍蜀绣的特点和代表作品' },
-  { emoji: '🦚', name: '粤绣', tag: '饱满浓烈 · 岭南风情', q: '请详细介绍粤绣的特点和代表作品' },
-  { emoji: '🌺', name: '苗绣', tag: '几何纹样 · 民族特色', q: '请介绍苗绣的历史文化和特色纹样' },
-  { emoji: '🪡', name: '平针', tag: '最基础的刺绣针法', q: '什么是平针？如何操作平针？' },
-  { emoji: '↩️', name: '回针', tag: '轮廓线条的常用针法', q: '什么是回针？它有什么用途？' },
-  { emoji: '🔗', name: '锁边针', tag: '装饰与加固边缘', q: '请介绍锁边针的特点和使用场景' },
-  { emoji: '🌸', name: '缎针', tag: '光滑填充 · 缎面效果', q: '什么是缎针？如何绣出缎面质感？' },
-  { emoji: '📜', name: '非遗历史', tag: '2006年列入国家名录', q: '中国刺绣非遗的历史和保护现状是什么？' },
-  { emoji: '🎨', name: '色彩搭配', tag: '刺绣配色艺术', q: '传统刺绣的色彩搭配有哪些讲究？' },
-  { emoji: '✂️', name: '绣布工具', tag: '绣绷 · 绣针 · 丝线', q: '刺绣需要准备哪些基本工具和材料？' },
+  { emoji: '🧵', name: '苏绣',     tag: '精细雅洁 · 双面绣',     q: '请详细介绍苏绣的特点和代表作品' },
+  { emoji: '🦁', name: '湘绣',     tag: '毛针质感 · 豪放气质',   q: '请详细介绍湘绣的特点和代表作品' },
+  { emoji: '🐼', name: '蜀绣',     tag: '疏朗明快 · 天府风韵',   q: '请详细介绍蜀绣的特点和代表作品' },
+  { emoji: '🦚', name: '粤绣',     tag: '饱满浓烈 · 岭南风情',   q: '请详细介绍粤绣的特点和代表作品' },
+  { emoji: '🌺', name: '苗绣',     tag: '几何纹样 · 民族特色',   q: '请介绍苗绣的历史文化和特色纹样' },
+  { emoji: '🪡', name: '平针',     tag: '最基础的刺绣针法',       q: '什么是平针？如何操作平针？' },
+  { emoji: '↩️', name: '回针',     tag: '轮廓线条的常用针法',     q: '什么是回针？它有什么用途？' },
+  { emoji: '🔗', name: '锁边针',   tag: '装饰与加固边缘',         q: '请介绍锁边针的特点和使用场景' },
+  { emoji: '🌸', name: '缎针',     tag: '光滑填充 · 缎面效果',   q: '什么是缎针？如何绣出缎面质感？' },
+  { emoji: '📜', name: '非遗历史', tag: '2006年列入国家名录',     q: '中国刺绣非遗的历史和保护现状是什么？' },
+  { emoji: '🎨', name: '色彩搭配', tag: '刺绣配色艺术',           q: '传统刺绣的色彩搭配有哪些讲究？' },
+  { emoji: '✂️', name: '绣布工具', tag: '绣绷 · 绣针 · 丝线',   q: '刺绣需要准备哪些基本工具和材料？' },
 ];
 
 function pickRandom4() {
@@ -41,7 +68,8 @@ function buildCards(cards) {
 
 export default function buildCulturePage() {
   const initCards = pickRandom4();
-
+  // 构建后异步恢复聊天记录
+  setTimeout(restoreCultureChat, 0);
   return `
     <div class="app-wrapper page-culture">
       ${buildNavbar('culture')}
@@ -54,27 +82,7 @@ export default function buildCulturePage() {
             <div class="character-3d">
               <canvas id="live2d" style="width:100%;height:100%;display:block;"></canvas>
             </div>
-            <!-- ═══ Live2D 对话气泡 ═══ -->
-            <div id="live2dBubble" class="live2d-bubble hidden">
-              ${svgPic}
-                 <defs>
-                  <filter id="wobble" x="-10%" y="-10%" width="125%" height="130%">
-                    <feTurbulence type="turbulence" baseFrequency="0.06 0.06" numOctaves="2" seed="7" result="noise"/>
-                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/>
-                  </filter>
-                </defs>
-                <path d="M 92 22 C 100 14,112 9,128 8 C 158 6,198 5,235 5 C 268 5,298 6,320 8 C 338 10,352 15,360 22 C 368 29,370 38,370 50 C 370 64,370 78,369 90 C 368 102,365 112,358 119 C 349 127,334 131,312 132 C 280 133,245 133,212 133 C 184 133,158 132,138 130 C 116 128,100 120,95 108 C 90 96,90 80,91 64 C 92 48,92 30,92 22 Z"
-                  fill="#aaa" transform="translate(7,7)"/>
-                <path class="bubble-body" d="M 92 22 C 100 14,112 9,128 8 C 158 6,198 5,235 5 C 268 5,298 6,320 8 C 338 10,352 15,360 22 C 368 29,370 38,370 50 C 370 64,370 78,369 90 C 368 102,365 112,358 119 C 349 127,334 131,312 132 C 280 133,245 133,212 133 C 184 133,158 132,138 130 C 116 128,100 120,95 108 C 90 96,90 80,91 64 C 92 48,92 30,92 22 Z"
-                  fill="white" stroke="#1a1a1a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" filter="url(#wobble)"/>
-                <path d="M 100 130 Q 72 158 55 195 Q 78 162 118 132 Z" fill="white"/>
-                <path d="M 98 132 Q 68 162 52 197" fill="none" stroke="#1a1a1a" stroke-width="3.8" stroke-linecap="round" filter="url(#wobble)"/>
-                <path d="M 118 132 Q 90 165 72 197" fill="none" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round" filter="url(#wobble)"/>
-                <text id="bubbleText"  x="210" y="55"  text-anchor="middle" font-size="18" fill="#111" font-weight="600" font-family="sans-serif"></text>
-                <text id="bubbleText2" x="210" y="82"  text-anchor="middle" font-size="18" fill="#111" font-weight="600" font-family="sans-serif"></text>
-                <text id="bubbleText3" x="210" y="109" text-anchor="middle" font-size="18" fill="#111" font-weight="600" font-family="sans-serif"></text>              </svg>
-            </div>
-            <div class="emotion-switch">
+            <div class="emotion-switch" style="display:none">
               <button class="emotion-btn active" onclick="setEmotion('happy')">😊 <span>开心</span></button>
               <button class="emotion-btn" onclick="setEmotion('peace')">😌 <span>平静</span></button>
               <button class="emotion-btn" onclick="setEmotion('thoughtful')">🤔 <span>思考</span></button>
@@ -168,3 +176,42 @@ export default function buildCulturePage() {
   `
 }
 
+// ── 刷新卡片（全局，onclick 调用）─────────────
+window.refreshCultureCards = function () {
+  const grid = document.getElementById('cultureCardGrid');
+  if (!grid) return;
+
+  // 先淡出
+  grid.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+  grid.style.opacity    = '0';
+  grid.style.transform  = 'translateY(6px)';
+
+  // 等淡出完成后再换内容 + 淡入
+  // 用 160ms（略短于 0.15s transition）+ 双 rAF 保证浏览器完成绘制
+  setTimeout(() => {
+    grid.innerHTML = buildCards(pickRandom4());
+
+    // 先关闭 transition 让 opacity/transform 立刻归零位
+    grid.style.transition = 'none';
+    grid.style.opacity    = '0';
+    grid.style.transform  = 'translateY(6px)';
+
+    // 双 rAF：第一帧让浏览器应用上面的 none-transition 状态
+    // 第二帧再开启 transition 并设值，触发真正的淡入动画
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        grid.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+        grid.style.opacity    = '1';
+        grid.style.transform  = 'translateY(0)';
+
+        // 重新应用锁定状态
+        if (window._cultureInputLocked) {
+          grid.querySelectorAll('.culture-mini-card').forEach(c => {
+            c.style.pointerEvents = 'none';
+            c.style.opacity       = '0.45';
+          });
+        }
+      });
+    });
+  }, 160);
+}

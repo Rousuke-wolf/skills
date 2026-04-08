@@ -4,9 +4,7 @@ import { speak, stop, pause, resume, isPlaying } from "./tts.js";
 let chatHistoryData = [
     {
         role: "system",
-        content: `你是"绫韵"，一位专注于中国传统刺绣文化的数字人讲解员。你只回答与刺绣相关的问题，包括：刺绣历史、四大名绣（苏绣、湘绣、蜀绣、粤绣）、少数民族刺绣（苗绣等）、针法技法（平针、回针、锁边针、缎针等）、刺绣工具材料、非物质文化遗产保护等话题。
-如果用户询问与刺绣无关的内容（如兔儿爷、舞狮、其他非遗项目或任何其他话题），请礼貌地说明你只专注于刺绣文化，并引导用户提问刺绣相关内容。
-回答风格：亲切、专业、富有文化底蕴，适当使用刺绣相关的比喻和意象。`
+        content: `你是"绫韵"，刺绣文化数字人讲解员。只回答刺绣相关问题（历史、四大名绣、苗绣、针法、工具、非遗保护）。非刺绣话题请礼貌拒绝并引导回刺绣。回答亲切专业，100字以内为宜。`
     }
 ];
 
@@ -81,7 +79,30 @@ window.updateVoiceSetting = function (key, value) {
 
 
 // ─────────────────────────────────────────────
-let _typingTimer = null;
+// 对话历史裁剪：最多保留 system + 最近 6 轮（12条）
+// 发送前裁剪，保证每次 API 请求 token 数稳定
+// ─────────────────────────────────────────────
+const MAX_HISTORY_ROUNDS = 6;
+
+function trimHistory() {
+    const sys  = chatHistoryData[0];   // system prompt 永远保留
+    const rest = chatHistoryData.slice(1);
+    const limit = MAX_HISTORY_ROUNDS * 2;  // 6轮 = 12条
+    if (rest.length > limit) {
+        chatHistoryData = [sys, ...rest.slice(rest.length - limit)];
+    }
+}
+
+// 发送前调用，返回裁剪后的副本（不直接修改 chatHistoryData）
+function getContextForAPI() {
+    const sys  = chatHistoryData[0];
+    const rest = chatHistoryData.slice(1);
+    const limit = MAX_HISTORY_ROUNDS * 2;
+    const trimmed = rest.length > limit ? rest.slice(rest.length - limit) : rest;
+    return [sys, ...trimmed];
+}
+
+let _typingTimer = null;   // ← 声明，避免 clearTimeout 报 ReferenceError
 let _typingPaused = false;
 let _typingResume = null;  // 暂停时保存 tick，用于 resume 继续
 let _typingResolve = null; // 保存 Promise 的 resolve，stopTyping 直接调用结束 await
@@ -154,9 +175,8 @@ window.quickQuestion = function (question) {
     appendUser(question);
     appendThinking();
     (async () => {
-        await appendAIStream(chatHistoryData, question, (res) => {
-            chatHistoryData.push({ role: "user", content: question });
-            chatHistoryData.push({ role: "assistant", content: res.message });
+        await appendAIStream(getContextForAPI(), question, (res) => {
+            _onAIDone(question, res.message);
         });
         if (!_replyStopped) unlockInput();
     })();
@@ -257,16 +277,25 @@ async function appendAIStream(historyMessages, userInput, onDone) {
     if (typeof window.startLipsync === "function") window.startLipsync();
     updateTtsButtons(true);
 
+    // ── 给气泡挂稳定 id，切页后可被 restoreCultureChat 重新认领 ──
+    div.id = "_typingBubble";
+    window._typingInProgress = true;
+
     stopTyping();
     await new Promise(resolve => {
         _typingResolve = resolve;   // ← 存起来，stopTyping 可直接结束 await
         function tick() {
             if (_typingPaused) { _typingResume = tick; return; }
+            // 每次 tick 都重新查询 live DOM，页面切换后 div 会被重新认领
+            const target = document.getElementById("_typingBubble") || div;
+            const chatEl = document.getElementById("chatHistory");
             if (i < message.length) {
-                div.innerText = message.slice(0, ++i);
-                el.scrollTop = el.scrollHeight;
+                target.innerText = message.slice(0, ++i);
+                if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
                 _typingTimer = setTimeout(tick, ESTIMATE_INTERVAL);
             } else {
+                target.id = "";
+                window._typingInProgress = false;
                 stopTyping();
                 resolve();
             }
@@ -275,13 +304,17 @@ async function appendAIStream(historyMessages, userInput, onDone) {
         tick();
     });
 
-    const lipsyncDuration = Math.max(2000, message.length * 300);
-    setTimeout(() => {
-        if (typeof window.stopLipsync === "function") window.stopLipsync();
-    }, lipsyncDuration);
-
     updateTtsButtons(false);
+    // 打字结束后立即停止口型（TTS 的 stop 会在 tts.js 侧处理振幅归零）
+    if (typeof window.stopLipsync === "function") window.stopLipsync();
     if (typeof onDone === "function") onDone(finalData);
+}
+
+// onDone 回调里统一 trim（sendBtn 和 quickQuestion 都走这里）
+function _onAIDone(userText, resMsg) {
+    chatHistoryData.push({ role: "user",      content: userText });
+    chatHistoryData.push({ role: "assistant", content: resMsg  });
+    trimHistory();
 }
 
 // ─────────────────────────────────────────────
@@ -307,9 +340,8 @@ function initRecognition(voiceStatus) {
         appendUser(text);
         appendThinking();
         try {
-            await appendAIStream(chatHistoryData, text, (res) => {
-                chatHistoryData.push({ role: "user", content: text });
-                chatHistoryData.push({ role: "assistant", content: res.message });
+            await appendAIStream(getContextForAPI(), text, (res) => {
+                _onAIDone(text, res.message);
                 voiceStatus.innerText = "点击麦克风继续";
             });
         } catch (err) {
@@ -398,39 +430,74 @@ async function initLive2D() {
             model.scale.set(_baseScale * _zoomFactor);
         }, { passive: false });
 
-        // ── 口型同步：读取 tts.js 暴露的实时音量 ──────
-        // window._ttsAmplitude 由 tts.js AnalyserNode 实时更新（0~1）
-        let _lipsyncRaf = null;
+        // ── 口型同步：motion 文件里有 ParamMouthOpenY 曲线，每帧会覆盖我们的值
+        // 解决方案：用 app.ticker 在 model update 完成后强制写回口型值
+        // pixi-live2d-display 在 PIXI.UPDATE_PRIORITY.HIGH (=25) 更新模型
+        // 我们用 NORMAL (=0) 在其后执行，确保覆盖 motion 的结果
+        const MOUTH_PARAMS = ["ParamMouthOpenY", "PARAM_MOUTH_OPEN_Y", "ParamMouthOpen"];
+        let _mouthParam = null;
+
+        // 探测参数名
+        for (const name of MOUTH_PARAMS) {
+            try {
+                // getParameterValueById 不报错则参数存在
+                model.internalModel.coreModel.setParameterValueById(name, 0);
+                _mouthParam = name;
+                console.log(`✅ 口型参数: ${name}`);
+                break;
+            } catch (e) {}
+        }
+
+        // 如果上面都失败，尝试遍历模型参数找嘴相关的
+        if (!_mouthParam) {
+            try {
+                const count = model.internalModel.coreModel.getParameterCount();
+                for (let i = 0; i < count; i++) {
+                    const id = model.internalModel.coreModel.getParameterId(i);
+                    if (id && id.toLowerCase().includes('mouth') && id.toLowerCase().includes('open')) {
+                        _mouthParam = id;
+                        console.log(`✅ 口型参数(遍历): ${id}`);
+                        break;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        if (!_mouthParam) {
+            console.warn("⚠️ 未找到嘴部参数，口型驱动降级");
+        }
+
+        // ticker 在 model update 之后运行（NORMAL priority = 0，低于 model 的 HIGH = 25）
+        let _lipsyncSmoothed = 0;
         window._lipsyncActive = false;
+
+        const _lipsyncTicker = () => {
+            if (!_mouthParam) return;
+            if (!window._lipsyncActive) {
+                // 停止时也要归零（抵消 motion 里可能有非零值的帧）
+                try { model.internalModel.coreModel.setParameterValueById(_mouthParam, 0); } catch (e) {}
+                return;
+            }
+            const raw = window._ttsAmplitude ?? 0;
+            // 响应快：0.3/0.7；平滑但不滞后
+            _lipsyncSmoothed = _lipsyncSmoothed * 0.30 + raw * 0.70;
+            const val = Math.min(1, _lipsyncSmoothed * 5.0);
+            try {
+                model.internalModel.coreModel.setParameterValueById(_mouthParam, val);
+            } catch (e) {}
+        };
+
+        // 用 PIXI.UPDATE_PRIORITY.NORMAL (0) 注册，在模型 HIGH(25) 之后执行
+        app.ticker.add(_lipsyncTicker, null, PIXI.UPDATE_PRIORITY?.NORMAL ?? 0);
 
         window.startLipsync = function () {
             window._lipsyncActive = true;
-            // 平滑系数：避免嘴巴抖动
-            let smoothed = 0;
-
-            function tick() {
-                if (!window._lipsyncActive) {
-                    try { model.internalModel.coreModel.setParameterValueById("ParamMouthOpenY", 0); } catch (e) {}
-                    _lipsyncRaf = null;
-                    return;
-                }
-                // 低通平滑
-                const raw  = window._ttsAmplitude ?? 0;
-                smoothed   = smoothed * 0.55 + raw * 0.45;
-                // 映射到 0~1（Cubism 4 的 ParamMouthOpenY 范围）
-                const val  = Math.min(1, smoothed * 2.2);
-                try {
-                    model.internalModel.coreModel.setParameterValueById("ParamMouthOpenY", val);
-                } catch (e) {}
-                _lipsyncRaf = requestAnimationFrame(tick);
-            }
-            tick();
+            _lipsyncSmoothed = 0;
         };
 
         window.stopLipsync = function () {
             window._lipsyncActive = false;
-            if (_lipsyncRaf) { cancelAnimationFrame(_lipsyncRaf); _lipsyncRaf = null; }
-            try { model.internalModel.coreModel.setParameterValueById("ParamMouthOpenY", 0); } catch (e) {}
+            _lipsyncSmoothed = 0;
         };
 
         // ── 表情自动探测：能用就保留，不能用就隐藏情绪栏 ──
@@ -518,9 +585,8 @@ function bindEvents() {
             appendUser(text);
             input.value = "";
             appendThinking();
-            await appendAIStream(chatHistoryData, text, (res) => {
-                chatHistoryData.push({ role: "user", content: text });
-                chatHistoryData.push({ role: "assistant", content: res.message });
+            await appendAIStream(getContextForAPI(), text, (res) => {
+                _onAIDone(text, res.message);
             });
             if (!_replyStopped) {
                 unlockInput();

@@ -18,8 +18,17 @@ let _savedChatHTML = null
 // renderApp — 页面入口
 // ─────────────────────────────────────────────
 window.renderApp = function (page) {
+  // ── 1. 离开文化页：保存聊天记录 ──────────────
+  if (typeof window.saveCultureChat === 'function') {
+    window.saveCultureChat()
+  }
+
+  // ── 2. 教学页聊天记录快照 ─────────────────────
   const existingChat = document.getElementById('chatHistory')
   if (existingChat) _savedChatHTML = existingChat.innerHTML
+
+  // ── 3. 标记"正在切页"，阻止 rebind 时误触 TTS stop ──
+  window._isSwitchingPage = true
 
   currentPage = page
   const app = document.querySelector('#app')
@@ -31,10 +40,13 @@ window.renderApp = function (page) {
   else if (page === 'about') app.innerHTML = buildAboutPage()
   else app.innerHTML = buildHomePage()
 
-  // 重新绑定通用事件
+  // 重新绑定通用事件（此时 _isSwitchingPage = true，stop 按钮不应触发 TTS stop）
   if (typeof window.__rebindScriptEvents === 'function') {
     window.__rebindScriptEvents()
   }
+
+  // ── 4. 切页完成，解除标记 ─────────────────────
+  window._isSwitchingPage = false
 
   // 教学页初始化
   if (page === 'teaching') {
