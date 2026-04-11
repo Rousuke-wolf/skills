@@ -840,10 +840,10 @@ async function initTeachingGLB() {
         wave: "/model/character/wave(model).glb",
     };
 
-    // 固定视角参数（theta=0, phi=78deg），只允许滚轮改半径
+    // 固定视角参数（theta=0, phi=90deg正面），只允许滚轮改半径
     const FIXED_THETA = "0deg";
-    const FIXED_PHI   = "78deg";
-    let _radius = 1.5;
+    const FIXED_PHI   = "90deg";
+    let _radius = 2.2;
     let currentState = "";
     let waveReturnTimer = null;
 

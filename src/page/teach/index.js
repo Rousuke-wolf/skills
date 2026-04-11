@@ -21,9 +21,11 @@ export default function buildTeachingPage() {
                 autoplay
                 shadow-intensity="1"
                 exposure="1.1"
-                camera-orbit="0deg 78deg 1.5m"
-                min-camera-orbit="auto auto 0.4m"
-                max-camera-orbit="auto auto 3.0m"
+                camera-orbit="0deg 90deg 2.2m"
+                camera-target="0m 1.2m 0m"
+                min-camera-orbit="auto auto 0.8m"
+                max-camera-orbit="auto auto 4.0m"
+                field-of-view="70deg"
                 interaction-prompt="none"
                 style="width:100%;height:100%;background:transparent;--poster-color:transparent;">
               </model-viewer>
