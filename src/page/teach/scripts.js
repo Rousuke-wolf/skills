@@ -1,7 +1,15 @@
-// ./page/teach/scripts.js  v3
+// ./page/teach/scripts.js  v4
 // 特性：canvas clip 防超框 · 3轮后重播 · 步骤圆点可点击 · 步骤卡片联动 + TTS 台词
+//       切换针法/类型时自动停止上一次讲解 · 接入 3D GLB 数字人
 
-import { speak } from '../../tts.js';
+// ── TTS 配置：两种方案二选一 ──────────────────────
+// 方案 A（默认）：与文化页共用同一个 TTS 服务
+//import { speak, stop } from '../../tts.js';
+
+// 方案 B：教学页专用 TTS（独立语音模型/端点）
+ import { teachSpeak as speak, teachStop as stop } from '../../tts-teach.js';
+//  在 tts-teach.js 里配置 TTS_TEACH_PROXY 和 voice 参数即可
+// ─────────────────────────────────────────────────
 
 // ─── 全局动画状态 ─────────────────────────────
 let _isAnimating  = true;
@@ -119,17 +127,26 @@ window.jumpToPhase = function(phaseIdx) {
 
 // ─── 步骤卡片点击 ─────────────────────────────
 window.stepCardClicked = function(cardIdx) {
-  // 1. 跳动画
+  // 1. 停止上一次讲解
+  stop();
+  if (typeof window.setCharacterState === 'function') window.setCharacterState('idle');
+
+  // 2. 跳动画
   const phaseIdx = CARD_TO_PHASE[cardIdx] ?? cardIdx;
   window.jumpToPhase(phaseIdx);
 
-  // 2. 同步步骤圆点高亮（更新 canvas 一帧）
-  // 动画循环正在跑，下一帧会自动更新，无需额外操作
-
-  // 3. TTS 讲解
+  // 3. TTS 讲解 + 驱动 3D 模型口型/状态
   const lines = SPEECH[_curStitch]?.[_curType];
   if (lines && lines[cardIdx]) {
-    speak(lines[cardIdx]);
+    const text = lines[cardIdx];
+    // 估算播放时长：中文约 4 字/秒（语速 1.2x）
+    const estimatedMs = (text.length / (4 * 1.2)) * 1000 + 500;
+    if (typeof window.setCharacterState === 'function') window.setCharacterState('talk');
+    speak(text);
+    // 播完后切回 idle
+    setTimeout(() => {
+      if (typeof window.setCharacterState === 'function') window.setCharacterState('idle');
+    }, estimatedMs);
   }
 };
 
@@ -456,6 +473,10 @@ window.selectStep = function(el) {
 };
 
 window.selectPill = function(el) {
+  // 切换前先停止当前讲解，让 3D 模型回 idle
+  stop();
+  if (typeof window.setCharacterState === 'function') window.setCharacterState('idle');
+
   const row=el.closest('.control-row');
   if(row) row.querySelectorAll('.pill-btn').forEach(b=>b.classList.remove('pill-active'));
   el.classList.add('pill-active');

@@ -102,27 +102,34 @@ function getContextForAPI() {
     return [sys, ...trimmed];
 }
 
-let _typingTimer = null;   // ← 声明，避免 clearTimeout 报 ReferenceError
+let _typingTimer = null;
 let _typingPaused = false;
-let _typingResume = null;  // 暂停时保存 tick，用于 resume 继续
-let _typingResolve = null; // 保存 Promise 的 resolve，stopTyping 直接调用结束 await
+let _typingResume = null;
+let _typingResolve = null;
+// 世代计数器：每次新 appendAIStream 调用时递增，旧调用自动失效
+let _streamGeneration = 0;
 
 function pauseTyping() {
     _typingPaused = true;
+    // 清除计划中的 tick，但 _typingResume 由 tick 自身维护，无需在此设置
     if (_typingTimer) { clearTimeout(_typingTimer); _typingTimer = null; }
 }
 
 function resumeTyping() {
-    if (!_typingPaused || !_typingResume) return;
+    if (!_typingPaused) return;
     _typingPaused = false;
-    _typingResume(); // 从暂停处继续 tick
+    // _typingResume 由 tick 在每次执行开头注册，此处直接调用即可
+    if (_typingResume) {
+        const r = _typingResume;
+        _typingResume = null;
+        r();
+    }
 }
 
 function stopTyping() {
     _typingPaused = false;
     _typingResume = null;
     if (_typingTimer) { clearTimeout(_typingTimer); _typingTimer = null; }
-    // 直接 resolve Promise，让 await 立刻返回
     if (_typingResolve) { _typingResolve(); _typingResolve = null; }
 }
 
@@ -171,6 +178,13 @@ function updateTtsButtons(playing) {
 window.quickQuestion = function (question) {
     const history = document.getElementById("chatHistory");
     if (!history) return;
+    // 先打断当前一切输出，再开新对话
+    _streamGeneration++;
+    stop();
+    stopTyping();
+    if (typeof window.stopLipsync === "function") window.stopLipsync();
+    updateTtsButtons(false);
+
     lockInput();
     appendUser(question);
     appendThinking();
@@ -244,70 +258,128 @@ function appendAI(text) {
 }
 
 // ─────────────────────────────────────────────
-// 流式逐字输出 AI 消息，打字开始时就同步播放语音
-// ─────────────────────────────────────────────
-// 流式逐字输出 AI 消息
+// 流式接收 AI 回复，收完后同步启动打字 + TTS
 // ─────────────────────────────────────────────
 async function appendAIStream(historyMessages, userInput, onDone) {
+    const myGen = ++_streamGeneration;
+    const isAborted = () => _streamGeneration !== myGen;
+
     removeThinking();
     const el = document.getElementById("chatHistory");
     if (!el) return;
 
     const div = document.createElement("div");
     div.className = "message ai";
+    // 注意：此处不立即设置 id，等到打字阶段才设置
+    // 避免 div 在 DOM 中但未开始打字时，id 泄漏给其他调用的 tick
     el.appendChild(div);
     el.scrollTop = el.scrollHeight;
 
-    const stream = chatWithAIStream(historyMessages, userInput);
+    window._typingInProgress = true;
+
+    // ── 阶段一：流式接收，仅缓冲字符 ────────────
+    let collectedMessage = "";
     let finalData = null;
+
+    const stream = chatWithAIStream(historyMessages, userInput);
     for await (const chunk of stream) {
-        if (chunk.__done) finalData = chunk;
+        if (isAborted()) break;
+        if (chunk.__done) { finalData = chunk; break; }
+        const chars = chunk.__message != null
+            ? [chunk.__message]
+            : [...(chunk.delta ?? "")];
+        for (const c of chars) { if (c) collectedMessage += c; }
     }
-    if (!finalData) return;
 
-    const message = finalData.message || "";
+    // ── 被终止：移除空气泡，干净退出 ─────────────
+    if (isAborted()) {
+        div.remove();
+        window._typingInProgress = false;
+        return;
+    }
 
-    if (finalData.isShowModel) handleModelDisplay(finalData.modelIndex);
+    // ── 兜底：状态机未提取时用 finalData.message ──
+    if (!collectedMessage.trim() && finalData?.message) {
+        collectedMessage = finalData.message;
+    }
+    if (!collectedMessage.trim()) {
+        div.remove();
+        window._typingInProgress = false;
+        return;
+    }
 
-    const rate = (window._ttsSettings?.rate) ?? 1.2;
-    const ESTIMATE_INTERVAL = Math.max(16, Math.floor(230 / rate));
-    let i = 0;
-
-    speak(message);
+    // ── 阶段二：TTS 先启动，打字延迟等待 ─────────
+    speak(collectedMessage);
     if (typeof window.startLipsync === "function") window.startLipsync();
     updateTtsButtons(true);
 
-    // ── 给气泡挂稳定 id，切页后可被 restoreCultureChat 重新认领 ──
+    const TTS_STARTUP_MS = 350;
+    const rate = (window._ttsSettings?.rate) ?? 1.2;
+    const CHAR_INTERVAL = Math.max(30, Math.round(1000 / (rate * 4.2)));
+
+    await new Promise(r => setTimeout(r, TTS_STARTUP_MS));
+
+    if (isAborted()) {
+        div.remove();
+        window._typingInProgress = false;
+        stop();
+        return;
+    }
+
+    // ── 阶段三：打字 ─────────────────────────────
+    const charArray = [...collectedMessage];
+    let i = 0;
+
+    // 打字开始时才挂 id，结束或中断时立即摘掉
+    // 保证同一时刻 DOM 里最多只有一个 _typingBubble
     div.id = "_typingBubble";
-    window._typingInProgress = true;
 
     stopTyping();
     await new Promise(resolve => {
-        _typingResolve = resolve;   // ← 存起来，stopTyping 可直接结束 await
-        function tick() {
-            if (_typingPaused) { _typingResume = tick; return; }
-            // 每次 tick 都重新查询 live DOM，页面切换后 div 会被重新认领
-            const target = document.getElementById("_typingBubble") || div;
-            const chatEl = document.getElementById("chatHistory");
-            if (i < message.length) {
-                target.innerText = message.slice(0, ++i);
+        _typingResolve = resolve;
+
+        (function tick() {
+            // ── 每次 tick 开头都注册自己，确保 pause/resume 可用 ──
+            _typingResume = tick;
+
+            if (_typingPaused) return;   // 暂停：_typingResume 已注册，等 resumeTyping 调用
+
+            // 检测外部 stop：立即结束
+            if (isAborted()) {
+                div.id = "";             // 摘掉 id，防止 id 泄漏
+                _typingResume = null;
+                resolve();
+                return;
+            }
+
+            if (i < charArray.length) {
+                // 始终用 div 直接写，不依赖 getElementById（更安全）
+                div.innerText = collectedMessage.slice(0, ++i);
+                const chatEl = document.getElementById("chatHistory");
                 if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
-                _typingTimer = setTimeout(tick, ESTIMATE_INTERVAL);
+                _typingTimer = setTimeout(tick, CHAR_INTERVAL);
             } else {
-                target.id = "";
+                // 正常打完
+                div.id = "";
+                _typingResume = null;
                 window._typingInProgress = false;
                 stopTyping();
                 resolve();
             }
-        }
-        _typingResume = tick;
-        tick();
+        })();
     });
 
+    // ── 无论以何种方式退出打字，都确保 id 被清除 ──
+    div.id = "";
+    window._typingInProgress = false;
+
     updateTtsButtons(false);
-    // 打字结束后立即停止口型（TTS 的 stop 会在 tts.js 侧处理振幅归零）
     if (typeof window.stopLipsync === "function") window.stopLipsync();
-    if (typeof onDone === "function") onDone(finalData);
+
+    if (!isAborted() && finalData) {
+        if (finalData.isShowModel) handleModelDisplay(finalData.modelIndex);
+        if (typeof onDone === "function") onDone(finalData);
+    }
 }
 
 // onDone 回调里统一 trim（sendBtn 和 quickQuestion 都走这里）
@@ -359,11 +431,15 @@ function stopRecognition() {
 }
 
 // ─────────────────────────────────────────────
-// Live2D 初始化（可重复调用）
+// Live2D 初始化（仅文化页调用，其他页有 canvas 才执行）
 // ─────────────────────────────────────────────
 async function initLive2D() {
+    // 文化页才有 live2d canvas，其他页直接跳过
+    const canvas = document.getElementById("live2d");
+    if (!canvas) return;
+
     if (window.live2dApp) {
-        try { window.live2dApp.destroy(true, { children: true, texture: true }); } catch (e) { }
+        try { window.live2dApp.destroy(true, { children: true, texture: true }); } catch (e) {}
         window.live2dApp = null;
         window.live2dModel = null;
     }
@@ -372,9 +448,8 @@ async function initLive2D() {
         if (typeof Live2DCubismCore === "undefined") { showModelError("Cubism Core 未加载"); return; }
         if (!PIXI.live2d?.Live2DModel) { showModelError("Cubism4 插件未正确加载"); return; }
 
-        const canvas = document.getElementById("live2d");
         const container = document.querySelector(".character-3d");
-        if (!canvas || !container) { showModelError("找不到 Live2D 显示区域"); return; }
+        if (!container) { showModelError("找不到 Live2D 显示区域"); return; }
 
         const app = new PIXI.Application({
             view: canvas,
@@ -391,7 +466,13 @@ async function initLive2D() {
         window.live2dModel = model;
         app.stage.addChild(model);
 
-        // ── 根据容器尺寸算 scale，之后不随窗口变化 ──
+        // ── 自适应尺寸 ──────────────────────────────
+        let _baseScale  = container.clientWidth * 0.0007;
+        let _zoomFactor = 1.1;
+        const ZOOM_MIN  = 0.8;
+        const ZOOM_MAX  = 1.4;
+        const ZOOM_STEP = 0.08;
+
         function fitModel() {
             const w = container.clientWidth;
             const h = container.clientHeight;
@@ -399,30 +480,22 @@ async function initLive2D() {
             if (model.anchor) model.anchor.set(0.5, 0.28);
             model.x = w / 2;
             model.y = h * 0.55;
-            // 语音全屏模式容器很宽，用更小系数保持中位大小视觉一致
             const isVoiceMode = document.querySelector(".app-wrapper")?.classList.contains("voice-mode");
             const BASE = isVoiceMode ? 0.00035 : 0.0007;
-            model.scale.set(w * BASE * 1.1);
-            // 同步滚轮基准，避免切换后滚轮跳变
+            model.scale.set(w * BASE * _zoomFactor);
             _baseScale = w * BASE;
         }
-        // ── 滚轮缩放 ─────────────────────────────────
-        let _baseScale  = container.clientWidth * 0.0007;
-        let _zoomFactor = 1.1;          // 初始即中位值
-        const ZOOM_MIN  = 0.8;
-        const ZOOM_MAX  = 1.4;
-        const ZOOM_STEP = 0.08;
-
         fitModel();
 
         model.interactive = true;
         model.on("pointerdown", () => {
-            try { model.motion("TapBody"); } catch (e) { }
+            try { model.motion("TapBody"); } catch (e) {}
         });
 
         const ro = new ResizeObserver(() => fitModel());
         ro.observe(container);
 
+        // ── 滚轮缩放 ─────────────────────────────────
         container.addEventListener("wheel", (e) => {
             e.preventDefault();
             const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
@@ -430,31 +503,23 @@ async function initLive2D() {
             model.scale.set(_baseScale * _zoomFactor);
         }, { passive: false });
 
-        // ── 口型同步：motion 文件里有 ParamMouthOpenY 曲线，每帧会覆盖我们的值
-        // 解决方案：用 app.ticker 在 model update 完成后强制写回口型值
-        // pixi-live2d-display 在 PIXI.UPDATE_PRIORITY.HIGH (=25) 更新模型
-        // 我们用 NORMAL (=0) 在其后执行，确保覆盖 motion 的结果
+        // ── 口型同步 ─────────────────────────────────
         const MOUTH_PARAMS = ["ParamMouthOpenY", "PARAM_MOUTH_OPEN_Y", "ParamMouthOpen"];
         let _mouthParam = null;
-
-        // 探测参数名
         for (const name of MOUTH_PARAMS) {
             try {
-                // getParameterValueById 不报错则参数存在
                 model.internalModel.coreModel.setParameterValueById(name, 0);
                 _mouthParam = name;
                 console.log(`✅ 口型参数: ${name}`);
                 break;
             } catch (e) {}
         }
-
-        // 如果上面都失败，尝试遍历模型参数找嘴相关的
         if (!_mouthParam) {
             try {
                 const count = model.internalModel.coreModel.getParameterCount();
                 for (let i = 0; i < count; i++) {
                     const id = model.internalModel.coreModel.getParameterId(i);
-                    if (id && id.toLowerCase().includes('mouth') && id.toLowerCase().includes('open')) {
+                    if (id?.toLowerCase().includes("mouth") && id?.toLowerCase().includes("open")) {
                         _mouthParam = id;
                         console.log(`✅ 口型参数(遍历): ${id}`);
                         break;
@@ -463,72 +528,44 @@ async function initLive2D() {
             } catch (e) {}
         }
 
-        if (!_mouthParam) {
-            console.warn("⚠️ 未找到嘴部参数，口型驱动降级");
-        }
-
-        // ticker 在 model update 之后运行（NORMAL priority = 0，低于 model 的 HIGH = 25）
         let _lipsyncSmoothed = 0;
         window._lipsyncActive = false;
 
         const _lipsyncTicker = () => {
             if (!_mouthParam) return;
             if (!window._lipsyncActive) {
-                // 停止时也要归零（抵消 motion 里可能有非零值的帧）
                 try { model.internalModel.coreModel.setParameterValueById(_mouthParam, 0); } catch (e) {}
                 return;
             }
             const raw = window._ttsAmplitude ?? 0;
-            // 响应快：0.3/0.7；平滑但不滞后
             _lipsyncSmoothed = _lipsyncSmoothed * 0.30 + raw * 0.70;
             const val = Math.min(1, _lipsyncSmoothed * 5.0);
-            try {
-                model.internalModel.coreModel.setParameterValueById(_mouthParam, val);
-            } catch (e) {}
+            try { model.internalModel.coreModel.setParameterValueById(_mouthParam, val); } catch (e) {}
         };
-
-        // 用 PIXI.UPDATE_PRIORITY.NORMAL (0) 注册，在模型 HIGH(25) 之后执行
         app.ticker.add(_lipsyncTicker, null, PIXI.UPDATE_PRIORITY?.NORMAL ?? 0);
 
-        window.startLipsync = function () {
-            window._lipsyncActive = true;
-            _lipsyncSmoothed = 0;
-        };
+        window.startLipsync = function () { window._lipsyncActive = true;  _lipsyncSmoothed = 0; };
+        window.stopLipsync  = function () { window._lipsyncActive = false; _lipsyncSmoothed = 0; };
 
-        window.stopLipsync = function () {
-            window._lipsyncActive = false;
-            _lipsyncSmoothed = 0;
-        };
-
-        // ── 表情自动探测：能用就保留，不能用就隐藏情绪栏 ──
+        // ── 表情探测 ─────────────────────────────────
         let _expressionSupported = false;
         try {
-            // 尝试获取表情列表
-            const exprMgr = model.internalModel?.motionManager?.expressionManager;
+            const exprMgr   = model.internalModel?.motionManager?.expressionManager;
             const exprCount = exprMgr?.expressions?.length ?? 0;
             if (exprCount > 0) {
                 _expressionSupported = true;
-                console.log(`✅ 表情驱动可用，共 ${exprCount} 个表情`);
-                // 设置默认表情
                 try { model.expression(0); } catch (e) {}
             } else {
-                // 尝试直接调用索引
                 model.expression(0);
                 _expressionSupported = true;
-                console.log("✅ 表情驱动可用（通过索引）");
             }
         } catch (e) {
             _expressionSupported = false;
-            console.warn("⚠️ 表情驱动不可用，隐藏情绪栏:", e.message);
         }
 
-        // 根据探测结果决定是否显示情绪切换栏
         const emotionSwitch = document.querySelector(".emotion-switch");
-        if (emotionSwitch) {
-            emotionSwitch.style.display = _expressionSupported ? "" : "none";
-        }
+        if (emotionSwitch) emotionSwitch.style.display = _expressionSupported ? "" : "none";
 
-        // 同时更新 setEmotion，只在支持时实际调用
         window.setEmotion = function (emotion) {
             document.querySelectorAll(".emotion-btn").forEach(btn => {
                 btn.classList.remove("active");
@@ -541,13 +578,11 @@ async function initLive2D() {
                     (emotion === "gentle"     && t.includes("温柔"))
                 ) btn.classList.add("active");
             });
-            if (!_expressionSupported) return;
-            if (window.live2dModel) {
-                try {
-                    const map = { happy:"f01", peace:"f02", thoughtful:"f03", surprised:"f04", gentle:"f05" };
-                    window.live2dModel.expression(map[emotion]);
-                } catch (e) { console.warn("表情切换失败:", e); }
-            }
+            if (!_expressionSupported || !window.live2dModel) return;
+            try {
+                const map = { happy:"f01", peace:"f02", thoughtful:"f03", surprised:"f04", gentle:"f05" };
+                window.live2dModel.expression(map[emotion]);
+            } catch (e) {}
         };
 
         console.log("✅ Live2D 模型加载成功");
@@ -556,6 +591,7 @@ async function initLive2D() {
         showModelError("模型加载失败，请检查控制台报错");
     }
 }
+
 
 // ─────────────────────────────────────────────
 // 绑定页面交互事件
@@ -581,6 +617,13 @@ function bindEvents() {
         sendBtn.onclick = async () => {
             const text = input.value.trim();
             if (!text) return;
+            // 先打断当前一切输出，再开新对话
+            _streamGeneration++;
+            stop();
+            stopTyping();
+            if (typeof window.stopLipsync === "function") window.stopLipsync();
+            updateTtsButtons(false);
+
             lockInput();
             appendUser(text);
             input.value = "";
@@ -682,16 +725,17 @@ function bindEvents() {
         };
     }
 
-    // TTS 停止
+    // TTS 停止 + 中断当前流式输出
     if (ttsStopBtn) {
         ttsStopBtn.onclick = () => {
+            _streamGeneration++;   // 让当前所有进行中的 appendAIStream 调用失效
             stop();
             stopTyping();
-            hideSpeechBubble(0);
+            if (typeof window.stopLipsync === "function") window.stopLipsync();
+            if (typeof hideSpeechBubble === "function") hideSpeechBubble(0);
             updateTtsButtons(false);
             const pauseBtn = document.getElementById("ttsControlBtn");
             if (pauseBtn) { pauseBtn.textContent = "⏸"; pauseBtn.title = "暂停语音"; }
-            // 结束回复，立即解锁输入
             unlockInput();
         };
     }
@@ -782,12 +826,100 @@ function bindEvents() {
 }
 
 // ─────────────────────────────────────────────
+// 教学页 GLB 数字人初始化
+// ─────────────────────────────────────────────
+async function initTeachingGLB() {
+    const viewer    = document.getElementById("teachingViewer");
+    const container = document.getElementById("teachingViewerWrap");
+    if (!viewer || !container) return;
+
+    const GLB_MODELS = {
+        idle: "/model/character/idle(model).glb",
+        talk: "/model/character/talk(model).glb",
+        walk: "/model/character/walk (model) .glb",
+        wave: "/model/character/wave(model).glb",
+    };
+
+    // 固定视角参数（theta=0, phi=78deg），只允许滚轮改半径
+    const FIXED_THETA = "0deg";
+    const FIXED_PHI   = "78deg";
+    let _radius = 1.5;
+    let currentState = "";
+    let waveReturnTimer = null;
+
+    // 切换 GLB：换 src 后锁定视角并确保自动播放
+    window.setCharacterState = function (state) {
+        if (!GLB_MODELS[state] || state === currentState) return;
+        currentState = state;
+        viewer.setAttribute("src", GLB_MODELS[state]);
+        // src 变更后 model-viewer 会重置 cameraOrbit，需重新锁定
+        viewer.addEventListener("load", function onLoad() {
+            viewer.removeEventListener("load", onLoad);
+            viewer.cameraOrbit = `${FIXED_THETA} ${FIXED_PHI} ${_radius}m`;
+            // 确保动画自动播放
+            viewer.play?.();
+        }, { once: true });
+    };
+
+    // 兼容 appendAIStream 调用
+    window.startLipsync = () => window.setCharacterState("talk");
+    window.stopLipsync  = () => window.setCharacterState("idle");
+
+    window.playMotion = function (name, returnDelay = 3000) {
+        if (!GLB_MODELS[name]) return;
+        clearTimeout(waveReturnTimer);
+        window.setCharacterState(name);
+        if (name === "wave" || name === "walk") {
+            waveReturnTimer = setTimeout(
+                () => window.setCharacterState("idle"),
+                returnDelay
+            );
+        }
+    };
+
+    // ── 仅滚轮缩放，不允许拖拽旋转 ──────────────
+    // HTML 里已去掉 camera-controls，鼠标拖拽完全无效
+    // 这里只处理滚轮 → 改半径
+    const ZOOM_MIN  = 0.4;
+    const ZOOM_MAX  = 3.0;
+    const ZOOM_STEP = 0.10;
+
+    container.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        _radius -= e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+        _radius  = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _radius));
+        // 每次缩放都锁定 theta/phi，防止视角漂移
+        viewer.cameraOrbit = `${FIXED_THETA} ${FIXED_PHI} ${_radius}m`;
+    }, { passive: false });
+
+    // 阻止触摸拖动（移动端）
+    container.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+
+    // 首次加载完成后锁定视角
+    viewer.addEventListener("load", () => {
+        viewer.cameraOrbit = `${FIXED_THETA} ${FIXED_PHI} ${_radius}m`;
+        viewer.play?.();
+    }, { once: true });
+
+    // 进入页面先 wave 一次
+    window.playMotion("wave", 3000);
+    console.log("✅ 教学页 GLB 初始化成功");
+}
+
+// ─────────────────────────────────────────────
 // 供 main.js 在每次 renderApp 后调用
 // ─────────────────────────────────────────────
 window.__rebindScriptEvents = function () {
     bindEvents();
-    window.setEmotion("happy");
-    initLive2D();
+    // 判断规则：
+    //   文化页 / 3D展示页 → 有 #live2d canvas → 初始化 Live2D
+    //   教学页            → 有 #teachingViewer → 初始化 GLB 3D
+    if (document.getElementById("live2d")) {
+        window.setEmotion("happy");
+        initLive2D();
+    } else if (document.getElementById("teachingViewer")) {
+        initTeachingGLB();
+    }
 };
 
 // ─────────────────────────────────────────────
@@ -795,7 +927,11 @@ window.__rebindScriptEvents = function () {
 // ─────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
     bindEvents();
-    window.setEmotion("happy");
-    initLive2D();
+    if (document.getElementById("live2d")) {
+        window.setEmotion("happy");
+        initLive2D();
+    } else if (document.getElementById("teachingViewer")) {
+        initTeachingGLB();
+    }
     console.log("✅ 页面初始化完成");
 });

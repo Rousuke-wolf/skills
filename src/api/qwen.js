@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { heritageListJSON } from "../utils/models.js";
 
 const openai = new OpenAI({
-  apiKey: "sk-77aee8a61cab46a18ab2ba7487223716",
+  apiKey: "sk-bb2f9a5781d247568259cb014695d29a",
   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
   dangerouslyAllowBrowser: true
 });
@@ -42,32 +42,79 @@ export async function* chatWithAIStream(historyMessages = [], userInput) {
 
   let fullText = "";
 
+  // ── 流式 JSON 解析状态机 ──────────────────────
+  // 目标：一旦检测到 "message": " 开始，就逐字 yield 消息内容
+  // 这样打字和 TTS 可以比等全部流结束提前 1~3 秒启动
+  // 状态机：BEFORE_MSG → SKIP_SPACE → IN_MSG → AFTER_MSG
+  // SKIP_SPACE 兼容 "message":"内容" 和 "message": "内容" 两种格式
+  let parseState = "BEFORE_MSG";
+  let msgBuffer  = "";
+  const MSG_MARKER = '"message":';   // 只匹配到冒号，不含引号
+  let escaped = false;
+
   try {
     const stream = await openai.chat.completions.create({
-      model: "qwen3-30b-a3b",
+      model: "qwen-turbo",         // turbo：首 token 最快，无 thinking 开销
       messages,
-      stream: true
+      stream: true,
+      // 若未来切回 qwen3 系列，保留此项可关闭 thinking，避免额外延迟
+      // extra_body: { enable_thinking: false }
     });
 
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content ?? "";
-      if (delta) {
-        fullText += delta;
-        yield { __done: false, delta };
+      if (!delta) continue;
+      fullText += delta;
+
+      // ── 逐字符扫描，提取 message 字段内容 ────
+      for (const ch of delta) {
+        if (parseState === "BEFORE_MSG") {
+          msgBuffer += ch;
+          // 滑动窗口：只保留最后 MSG_MARKER.length 个字符
+          if (msgBuffer.length > MSG_MARKER.length) {
+            msgBuffer = msgBuffer.slice(-MSG_MARKER.length);
+          }
+          if (msgBuffer.endsWith(MSG_MARKER)) {
+            parseState = "SKIP_SPACE";   // 等待开头的 "，跳过可能的空格
+          }
+
+        } else if (parseState === "SKIP_SPACE") {
+          // 跳过冒号后的空白，遇到 " 才真正进入内容
+          if (ch === '"') {
+            parseState = "IN_MSG";
+            escaped = false;
+          }
+          // 其他字符（空格等）继续跳过
+
+        } else if (parseState === "IN_MSG") {
+          if (escaped) {
+            // 转义字符：原样 yield（简单处理常见转义）
+            const unescaped = ch === 'n' ? '\n' : ch === 't' ? '\t' : ch;
+            yield { __done: false, __message: unescaped };
+            escaped = false;
+          } else if (ch === '\\') {
+            escaped = true;
+          } else if (ch === '"') {
+            // message 字段结束
+            parseState = "AFTER_MSG";
+          } else {
+            yield { __done: false, __message: ch };
+          }
+        }
+        // AFTER_MSG：继续读完整 JSON，不再 yield 字符
       }
     }
   } catch (error) {
     console.error("AI 流式调用失败:", error);
-    const fallback = JSON.stringify({
-      message: "系统有点问题，我们稍后再试～",
-      isShowModel: false,
-      modelIndex: 0
-    });
-    fullText = fallback;
-    yield { __done: false, delta: fallback };
+    const fallbackMsg = "系统有点问题，我们稍后再试～";
+    // 直接逐字 yield fallback，走相同通道
+    for (const ch of fallbackMsg) {
+      yield { __done: false, __message: ch };
+    }
+    fullText = JSON.stringify({ message: fallbackMsg, isShowModel: false, modelIndex: 0 });
   }
 
-  // 流结束后解析完整 JSON
+  // ── 流结束后解析完整 JSON ────────────────────
   const cleaned = fullText.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
   let data;
   try {
@@ -91,7 +138,7 @@ export async function chatWithAI(historyMessages = [], userInput) {
       { role: "user", content: userInput }
     ];
     const completion = await openai.chat.completions.create({
-      model: "qwen3-30b-a3b",
+      model: "qwen-plus",
       messages
     });
     const raw = completion.choices[0].message.content.trim();

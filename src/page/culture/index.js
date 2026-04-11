@@ -23,7 +23,6 @@ function restoreCultureChat() {
       el.innerHTML = _cultureChatHTML;
       el.scrollTop = el.scrollHeight;
       // 如果打字动画仍在进行，把 id 重新挂到最后一个 AI 气泡上
-      // tick 下一次执行时通过 getElementById 找到它，继续输出
       if (window._typingInProgress) {
         const bubbles = el.querySelectorAll('.message.ai');
         if (bubbles.length > 0) {
