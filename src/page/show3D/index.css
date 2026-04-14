@@ -124,6 +124,105 @@
   outline: none;
 }
 
+/* ── Meshy AI 生成区 ── */
+.meshy-gen-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: absolute;
+  top: 62px;          /* 紧接在下拉框下方 */
+  left: 14px;
+  z-index: 10;
+  background: rgba(255, 252, 246, 0.92);
+  border: 1.5px solid #ddd0b8;
+  border-radius: 50px;
+  padding: 8px 12px 8px 12px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(120, 80, 30, 0.10);
+  transition: box-shadow 0.2s;
+  max-width: calc(100% - 28px);
+}
+
+.meshy-gen-bar:hover {
+  box-shadow: 0 6px 20px rgba(120, 80, 30, 0.16);
+}
+
+.meshy-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meshy-input {
+  background: transparent;
+  border: none;
+  color: #3d1f0a;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Noto Serif SC', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  outline: none;
+  padding: 0 4px;
+  width: 200px;
+}
+
+.meshy-input::placeholder {
+  color: #b8a080;
+}
+
+.meshy-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.meshy-gen-btn {
+  background: #a07840;
+  border: none;
+  border-radius: 50px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: 'Noto Serif SC', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.meshy-gen-btn:hover:not(:disabled) {
+  background: #8a6430;
+  transform: translateY(-1px);
+}
+
+.meshy-gen-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.meshy-status {
+  position: absolute;
+  top: 114px;
+  left: 14px;
+  z-index: 10;
+  background: rgba(255, 252, 246, 0.92);
+  border: 1.5px solid #ddd0b8;
+  border-radius: 50px;
+  padding: 5px 14px;
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  color: #8a6030;
+  font-family: 'Noto Serif SC', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  display: none;   /* 无状态时隐藏 */
+  box-shadow: 0 2px 10px rgba(120, 80, 30, 0.08);
+}
+
+.meshy-status.visible {
+  display: block;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
 /* 展品介绍卡片 */
 .model-info-card {
   background: #fffefb;

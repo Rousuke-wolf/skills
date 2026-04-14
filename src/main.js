@@ -2,12 +2,22 @@ import './style.css'
 import './script'
 import { MODELS } from './utils/models.js'
 
+window.meshyTask = {
+  id: null,
+  status: 'idle',    // idle(空闲), processing(生成中), success(成功), failed(失败)
+  progress: 0,
+  resultUrl: null,
+  prompt: ""
+};
+
 // 页面构建函数
 import buildHomePage from './page/home/index.js'
 import buildCulturePage from './page/culture/index.js'
 import buildTeachingPage from './page/teach/index.js'
 import buildAboutPage from './page/about/index.js'
 import { build3DPage, buildModelDropdown } from './page/show3D/index.js'
+
+
 
 export let currentModelIndex = 0
 let currentPage = 'home'
@@ -17,6 +27,7 @@ let _savedChatHTML = null
 // ─────────────────────────────────────────────
 // renderApp — 页面入口
 // ─────────────────────────────────────────────
+
 window.renderApp = function (page) {
   // ── 1. 离开文化页：保存聊天记录 ──────────────
   if (typeof window.saveCultureChat === 'function') {

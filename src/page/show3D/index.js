@@ -2,9 +2,8 @@ import { MODELS } from '../../utils/models.js'
 import { currentModelIndex, _modelHasContent } from '../../main.js'
 import { buildNavbar } from '../../components/Navibar.js'
 import './index.css'
-// ─────────────────────────────────────────────
-// 3D展厅页（原非遗展示页，结构几乎不变）
-// ─────────────────────────────────────────────
+import './Meshy.js'
+
 export function buildModelDropdown() {
   const options = MODELS.map((m, i) => `
     <option value="${i}" ${(_modelHasContent && i === currentModelIndex) ? 'selected' : ''}>${m.name}</option>
@@ -17,11 +16,38 @@ export function buildModelDropdown() {
         ${options}
       </select>
     </div>
+    <div class="meshy-gen-bar">
+      <label class="model-dropdown-label">✨ 生成展品</label>
+      <div class="meshy-input-row">
+        <input type="text" id="meshyPrompt" class="meshy-input" placeholder="描述展品，如：青花瓷花瓶..." />
+        <button class="meshy-gen-btn" id="meshyGenBtn" onclick="window.meshyGenerate()">
+          <span id="meshyBtnText">${window.meshyTask.status === 'processing' ? '⏳ 生成中...' : '🪄 生成'}</span>
+        </button>
+      </div>
+      <div class="meshy-status" id="meshyStatus"></div>
+    </div>
   `
 }
 
 export function build3DPage(hasModel = false) {
-  const model = MODELS[currentModelIndex]
+  const task = window.meshyTask;
+  const presetModel = MODELS[currentModelIndex];
+  
+  // 核心逻辑：确定当前显示的 SRC
+  let currentSrc = "";
+  let currentTitle = "";
+  let currentIntro = "暂无展品，请选择或生成内容。";
+
+  if (task.status === 'success') {
+    currentSrc = task.resultUrl;
+    currentTitle = task.prompt;
+    currentIntro = "由 Meshy AI 根据您的描述生成的 3D 模型。";
+  } else if (hasModel) {
+    currentSrc = presetModel.src;
+    currentTitle = presetModel.name;
+    currentIntro = presetModel.intro;
+  }
+
   return `
     <div class="app-wrapper">
       ${buildNavbar('3d')}
@@ -40,38 +66,31 @@ export function build3DPage(hasModel = false) {
             </div>
           </div>
         </div>
+
         <div class="right-panel model-right-panel" id="modelPanel">
           <div class="model-view-box model-view-box-top" id="modelViewBox">
             ${buildModelDropdown()}
-            ${hasModel ? `
-            <model-viewer
-              id="mainModelViewer"
-              src="${model.src}"
-              alt="3D模型展示"
-              auto-rotate
-              camera-controls
-              shadow-intensity="1"
-              exposure="1"
-              style="width:100%;height:100%;background:transparent;"
-            ></model-viewer>
+            
+            ${currentSrc ? `
+            <model-viewer id="mainModelViewer" src="${currentSrc}" auto-rotate camera-controls style="width:100%;height:100%;background:transparent;"></model-viewer>
             ` : `
             <div class="model-empty-hint">
               <div class="hint-icon">🧵</div>
-              <div class="hint-text">请从上方下拉框选择展品<br>或通过 AI 讲解员指定展品</div>
+              <div class="hint-text">请选择展品或描述生成</div>
             </div>
             `}
           </div>
+
           <div class="model-info-card">
             <div class="model-info-header">
               <div class="model-info-title">展品介绍</div>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <button class="intro-audio-btn" id="playIntroBtn" title="播放语音讲解">🎤</button>
-                <button class="model-back-voice-btn" onclick="renderApp('teaching')" title="返回教学讲解">💬 返回讲解</button>
-              </div>
             </div>
-            <div class="model-info-name" id="modelInfoName">${hasModel ? model.name : ''}</div>
-            <div class="model-info-text" id="modelIntroText">${hasModel ? model.intro : '暂无展品，请通过上方下拉框或 AI 讲解员选择要展示的文化展品。'}</div>
-            <div class="audio-status" id="audioStatus"></div>
+            <div class="model-info-name" id="modelInfoName">${currentTitle}</div>
+            <div class="model-info-text" id="modelIntroText">${currentIntro}</div>
+            
+            <div id="meshyStatus" class="meshy-status visible" style="margin-top:10px;">
+               ${task.status === 'processing' ? `⚙️ 后台生成进度: ${task.progress}%` : ''}
+            </div>
           </div>
         </div>
       </div>
