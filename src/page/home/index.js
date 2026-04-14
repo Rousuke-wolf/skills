@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
 // 首页
 
+
 import { buildNavbar } from "../../components/Navibar";
 
 // ─────────────────────────────────────────────
@@ -21,25 +22,25 @@ export default function buildHomePage() {
         </div>
       </div>
       <div class="home-features">
-        <div class="home-feature-card" onclick="renderApp('teaching')">
-          <div class="hf-icon">🎓</div>
-          <div class="hf-title">教学体验</div>
-          <div class="hf-desc">数字人引导员逐步讲解针法，动画演示全过程</div>
-        </div>
         <div class="home-feature-card" onclick="renderApp('culture')">
           <div class="hf-icon">📖</div>
           <div class="hf-title">刺绣文化</div>
           <div class="hf-desc">深入了解四大名绣的历史渊源与艺术特色</div>
+        </div>
+        <div class="home-feature-card" onclick="renderApp('teaching')">
+          <div class="hf-icon">🎓</div>
+          <div class="hf-title">教学体验</div>
+          <div class="hf-desc">数字人引导员逐步讲解针法，动画演示全过程</div>
         </div>
         <div class="home-feature-card" onclick="renderApp('3d')">
           <div class="hf-icon">🏛️</div>
           <div class="hf-title">3D展厅</div>
           <div class="hf-desc">沉浸式浏览精美刺绣成品的三维模型</div>
         </div>
-        <div class="home-feature-card" onclick="renderApp('teaching')">
-          <div class="hf-icon">🤖</div>
-          <div class="hf-title">AI 讲解员</div>
-          <div class="hf-desc">智能数字人灵汐随时解答疑惑，支持语音交互</div>
+        <div class="home-feature-card" onclick="renderApp('about')">
+          <div class="hf-icon">ℹ️</div>
+          <div class="hf-title">关于我们</div>
+          <div class="hf-desc">展示项目核心成果、团队理念与技术亮点，深入了解数字化非遗</div>
         </div>
       </div>
     </div>
