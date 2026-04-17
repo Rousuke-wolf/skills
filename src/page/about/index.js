@@ -82,14 +82,23 @@ export default function buildAboutPage() {
       
       <div class="about-page" style="max-width:1200px; margin:0 auto; padding:0 24px;">
         
-        <!-- 顶部标题区 -->
-        <div class="about-hero" style="padding:30px 0; border-bottom:1px solid #E0E0E0; margin-bottom:20px;">
-          <div class="about-hero-inner">
-            <div class="about-badge" style="font-size:14px; color:#8B5A3B;">🧵 关于我们</div>
-            <h1 class="about-title" style="font-size:36px; color:#333; margin:10px 0;">智传非遗</h1>
-            <p class="about-subtitle" style="font-size:16px; color:#666;">用数字技术守护千年绣艺，让非物质文化遗产在当代焕发生机</p>
-          </div>
-        </div>
+
+
+        <div class="about-hero">
+  <div class="about-hero-inner">
+    <div class="about-badge">🧵 关于我们</div>
+    <h1 class="about-title">智传非遗</h1>
+    <p class="about-subtitle">用数字技术守护千年绣艺，让非物质文化遗产在当代焕发生机</p>
+  </div>
+  <div class="about-deco-circle about-deco-1"></div>
+  <div class="about-deco-circle about-deco-2"></div>
+</div>
+
+
+
+
+
+
 
         <!-- 项目简介 + 使命（紧贴） -->
 <div class="about-section" style="margin:20px 0;">
@@ -153,7 +162,7 @@ export default function buildAboutPage() {
         
         <!-- 底部（紧贴） -->
         <div class="about-footer-note" style="text-align:center; padding:20px 0; font-size:12px; color:#666; border-top:1px solid #eee;">
-          本项目为非遗数字化传承课题研究成果 · 指导老师：待填写
+         
         </div>
       </div>
     </div>
