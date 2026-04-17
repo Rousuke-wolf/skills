@@ -1,8 +1,11 @@
 // meshy.js — Meshy Text-to-3D API 集成
 
 // ── 配置区 ──────────────────────────────────────
-const MESHY_API_KEY = "msy_9BOESjVcI8ETqeOnFM6U8wkFzUH6YCdyuL3G"; // ← 替换成你的 Meshy API Key
-const MESHY_BASE    = "https://api.meshy.ai/openapi/v2/text-to-3d";
+const MESHY_API_KEY  = "msy_9BOESjVcI8ETqeOnFM6U8wkFzUH6YCdyuL3G";
+// 通过 Vite 代理转发，解决跨域（vite.config.js 里配置 /meshy-api → api.meshy.ai）
+const MESHY_API_URL  = "/meshy-api/openapi/v2/text-to-3d";
+// GLB 文件同样走代理（/meshy-glb?url=原始链接）
+const MESHY_GLB_PROXY = "/meshy-glb";
 // ────────────────────────────────────────────────
 
 const POLL_INTERVAL = 3000;
@@ -101,7 +104,7 @@ async function pollTask(taskId, prompt) {
 
     let task;
     try {
-      const res = await fetch(`${MESHY_BASE}/${taskId}`, {
+      const res = await fetch(`${MESHY_API_URL}/${taskId}`, {
         headers: { "Authorization": `Bearer ${MESHY_API_KEY}` }
       });
       if (!res.ok) throw new Error(`轮询失败 ${res.status}`);
@@ -119,13 +122,16 @@ async function pollTask(taskId, prompt) {
     }
 
     if (task.status === "SUCCEEDED") {
-      const glbUrl = task.model_urls?.glb || task.model_urls?.obj;
-      if (!glbUrl) {
+      // GLB 直链在 assets.meshy.ai，浏览器直接加载会跨域
+      // 改为通过本地代理中转：?url=原始链接
+      const rawGlbUrl = task.model_urls?.glb || task.model_urls?.obj;
+      if (!rawGlbUrl) {
         setStatus("❌ 未找到模型链接", true, true);
         setBtnLoading(false);
         window._meshyTask = null;
         return;
       }
+      const glbUrl = `${MESHY_GLB_PROXY}?url=${encodeURIComponent(rawGlbUrl)}`;
 
       // 保存结果供切页恢复用
       window._meshyResult = { glbUrl, prompt };
@@ -169,7 +175,7 @@ window.meshyGenerate = async function () {
   setStatus("🚀 正在提交生成任务...");
 
   try {
-    const createRes = await fetch(MESHY_BASE, {
+    const createRes = await fetch(MESHY_API_URL, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${MESHY_API_KEY}`,
