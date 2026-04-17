@@ -32,7 +32,7 @@ export function buildModelDropdown() {
 export function build3DPage(hasModel = false) {
   const task = window.meshyTask;
   const presetModel = MODELS[currentModelIndex];
-  
+
   // 核心逻辑：确定当前显示的 SRC
   let currentSrc = "";
   let currentTitle = "";
@@ -56,13 +56,6 @@ export function build3DPage(hasModel = false) {
           <div class="character-section">
             <div class="character-3d">
               <canvas id="live2d" style="width:45vw;"></canvas>
-            </div>
-            <div class="emotion-switch">
-              <button class="emotion-btn active" onclick="setEmotion('happy')">😊 <span>开心</span></button>
-              <button class="emotion-btn" onclick="setEmotion('peace')">😌 <span>平静</span></button>
-              <button class="emotion-btn" onclick="setEmotion('thoughtful')">🤔 <span>思考</span></button>
-              <button class="emotion-btn" onclick="setEmotion('surprised')">😲 <span>惊讶</span></button>
-              <button class="emotion-btn" onclick="setEmotion('gentle')">🥰 <span>温柔</span></button>
             </div>
           </div>
         </div>
@@ -88,9 +81,6 @@ export function build3DPage(hasModel = false) {
             <div class="model-info-name" id="modelInfoName">${currentTitle}</div>
             <div class="model-info-text" id="modelIntroText">${currentIntro}</div>
             
-            <div id="meshyStatus" class="meshy-status visible" style="margin-top:10px;">
-               ${task.status === 'processing' ? `⚙️ 后台生成进度: ${task.progress}%` : ''}
-            </div>
           </div>
         </div>
       </div>
