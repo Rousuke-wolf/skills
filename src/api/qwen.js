@@ -118,97 +118,59 @@ export async function generateImage(prompt) {
 // 结束时 yield { __done: true, message, isGenerateImage, imagePrompt }
 // ─────────────────────────────────────────────
 export async function* chatWithAIStream(historyMessages = [], userInput) {
-  // historyMessages[0] 已经是 script.js chatHistoryData 里的 system prompt
-  // 不再重复添加 qwen.js 的 systemPrompt，避免两个 system 互相干扰
+  // ── 单次非流式调用 ───────────────────────────────────────────────────────
+  // appendAIStream 内部本来就是"收完全部 token 再打字"，流式对用户体验无实际提升
+  // 改为非流式可以直接用 response_format:json_object，彻底解决 JSON 解析问题
+  // ──────────────────────────────────────────────────────────────────────────
   const messages = [
     ...historyMessages,
     { role: "user", content: userInput }
   ];
 
-  let fullText = "";
-
-  // ── 流式 JSON 解析状态机 ──────────────────────
-  // 目标：一旦检测到 "message": " 开始，就逐字 yield 消息内容
-  // 状态机：BEFORE_MSG → SKIP_SPACE → IN_MSG → AFTER_MSG
-  let parseState = "BEFORE_MSG";
-  let msgBuffer  = "";
-  const MSG_MARKER = '"message":';
-  let escaped = false;
-
   try {
-    const stream = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: "qwen-turbo",
       messages,
-      stream: true,
-      response_format: { type: "json_object" },  // 强制 JSON 输出，防止模型回纯文本
+      stream: false,
+      response_format: { type: "json_object" },
     });
 
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content ?? "";
-      if (!delta) continue;
-      fullText += delta;
+    const raw = completion.choices[0]?.message?.content ?? "";
+    console.log("[qwen] 原始返回:", raw);
 
-      for (const ch of delta) {
-        if (parseState === "BEFORE_MSG") {
-          msgBuffer += ch;
-          if (msgBuffer.length > MSG_MARKER.length) {
-            msgBuffer = msgBuffer.slice(-MSG_MARKER.length);
-          }
-          if (msgBuffer.endsWith(MSG_MARKER)) {
-            parseState = "SKIP_SPACE";
-          }
-
-        } else if (parseState === "SKIP_SPACE") {
-          if (ch === '"') {
-            parseState = "IN_MSG";
-            escaped = false;
-          }
-
-        } else if (parseState === "IN_MSG") {
-          if (escaped) {
-            const unescaped = ch === 'n' ? '\n' : ch === 't' ? '\t' : ch;
-            yield { __done: false, __message: unescaped };
-            escaped = false;
-          } else if (ch === '\\') {
-            escaped = true;
-          } else if (ch === '"') {
-            parseState = "AFTER_MSG";
-          } else {
-            yield { __done: false, __message: ch };
-          }
-        }
-      }
+    let data;
+    try {
+      data = JSON.parse(raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim());
+    } catch (e) {
+      console.warn("[qwen] JSON解析失败，原文:", raw);
+      // 兜底：把原文当 message
+      data = { message: raw || "我刚才走神了，你说什么来着？", isGenerateImage: false, imagePrompt: "" };
     }
+
+    const message         = typeof data.message       === "string"  ? data.message       : "";
+    const isGenerateImage = data.isGenerateImage === true;
+    const imagePrompt     = typeof data.imagePrompt   === "string"  ? data.imagePrompt   : "";
+    const modelIndex      = typeof data.modelIndex    === "number"  ? data.modelIndex    : 0;
+    const isShowModel     = data.isShowModel === true;
+
+    console.log("[qwen] 解析结果:", { message, isGenerateImage, imagePrompt });
+
+    // 逐字 yield，供 appendAIStream 收集（与原流式接口兼容）
+    for (const ch of message) {
+      yield { __done: false, __message: ch };
+    }
+
+    yield { __done: true, message, isGenerateImage, imagePrompt, modelIndex, isShowModel };
+
   } catch (error) {
-    console.error("AI 流式调用失败:", error);
+    console.error("[qwen] API调用失败:", error);
     const fallbackMsg = "系统有点问题，我们稍后再试～";
     for (const ch of fallbackMsg) {
       yield { __done: false, __message: ch };
     }
-    fullText = JSON.stringify({ message: fallbackMsg, isGenerateImage: false, imagePrompt: "" });
+    yield { __done: true, message: fallbackMsg, isGenerateImage: false, imagePrompt: "", modelIndex: 0, isShowModel: false };
   }
-
-  // ── 流结束后解析完整 JSON ────────────────────
-  const cleaned = fullText.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
-  let data;
-  try {
-    data = JSON.parse(cleaned);
-  } catch (e) {
-    console.warn("无法解析 JSON：", fullText);
-    data = { message: cleaned || "我刚才走神了，你说什么来着？", isGenerateImage: false, imagePrompt: "" };
-  }
-  // 兜底：字段类型保护
-  if (typeof data.isGenerateImage !== "boolean") data.isGenerateImage = false;
-  if (typeof data.imagePrompt     !== "string")  data.imagePrompt     = "";
-  // 兼容旧版 isShowModel 字段（3D 展示页继续可用）
-  if (typeof data.modelIndex !== "number") data.modelIndex = 0;
-
-  // 调试日志：确认模型是否正确返回了生图指令
-  console.log("[qwen] 解析结果:", { isGenerateImage: data.isGenerateImage, imagePrompt: data.imagePrompt });
-
-  yield { __done: true, ...data };
 }
-
 // ─────────────────────────────────────────────
 // 保留原非流式接口，兼容其他调用方
 // ─────────────────────────────────────────────
