@@ -63,7 +63,7 @@ export function speak(text, onDuration) {
         body: JSON.stringify({
           text,
           volume: settings.volume ?? 50,
-          rate:   settings.rate   ?? 1.2
+          rate: settings.rate ?? 1.2
         })
       });
 
@@ -157,6 +157,8 @@ export function speak(text, onDuration) {
       if (typeof onDuration === "function" && totalDuration > 0) {
         onDuration(totalDuration);
       }
+      // 音频播完后停口型（留 200ms 缓冲让最后一帧归零自然）↓
+      setTimeout(_stopAudioLipsync, totalDuration * 1000 + 200);
 
     } catch (e) {
       console.error("[TTS] 异常:", e);
