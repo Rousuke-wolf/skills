@@ -1,5 +1,5 @@
 // Meshy.js — Meshy Text-to-3D API 集成 + AI 展品介绍 + TTS 播放
-import { speak, pause, resume, stop } from '../../tts.js'
+import { speak, pause, resume, stop, isPlaying, isPaused } from '../../tts.js'
 
 const MESHY_API_KEY = 'msy_9BOESjVcI8ETqeOnFM6U8wkFzUH6YCdyuL3G'
 const MESHY_API_URL = '/meshy-api/openapi/v2/text-to-3d'
@@ -11,6 +11,116 @@ const QWEN_API_KEY = 'sk-bb2f9a5781d247568259cb014695d29a'
 const QWEN_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
 
 window.meshyTask = window.meshyTask || { status: 'idle' }
+
+  // ── 注入全局 CSS（只注入一次）────────────────────
+  ; (function injectStyles() {
+    if (document.getElementById('meshy-anim-style')) return
+    const style = document.createElement('style')
+    style.id = 'meshy-anim-style'
+    style.textContent = `
+    /* ── 第一阶段：居中旋转加载动画 ── */
+    .meshy-loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: rgba(255,252,245,0.6);
+      z-index: 10;
+      pointer-events: none;
+    }
+    .meshy-loader-ring {
+      width: 64px;
+      height: 64px;
+      border: 5px solid #e8d5a3;
+      border-top-color: #c8a96e;
+      border-radius: 50%;
+      animation: meshySpin 0.9s linear infinite;
+    }
+    .meshy-loader-text {
+      font-size: 13px;
+      color: #8a6030;
+      letter-spacing: 0.03em;
+    }
+    @keyframes meshySpin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── 第二阶段：右上角渲染中角标 ── */
+    .meshy-rendering-badge {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: rgba(200,169,110,0.92);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(120,80,20,0.18);
+      z-index: 10;
+      pointer-events: none;
+      animation: meshyBadgePop 0.25s ease;
+    }
+    .meshy-rendering-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #fff;
+      animation: meshyDotPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes meshyBadgePop {
+      from { opacity:0; transform:scale(0.8) translateY(-4px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+    @keyframes meshyDotPulse {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:0.4; transform:scale(0.6); }
+    }
+  `
+    document.head.appendChild(style)
+  })()
+
+// ── 显示/隐藏第一阶段 spinner ─────────────────────
+function showLoader() {
+  const wrap = document.getElementById('modelViewerWrap') || document.getElementById('modelViewBox')
+  if (!wrap || document.getElementById('meshyLoader')) return
+  // 确保 wrap 是 relative，让 absolute 定位生效
+  wrap.style.position = 'relative'
+  const el = document.createElement('div')
+  el.id = 'meshyLoader'
+  el.className = 'meshy-loader'
+  el.innerHTML = `
+    <div class="meshy-loader-ring"></div>
+    <div class="meshy-loader-text">模型生成中，请稍候...</div>
+  `
+  wrap.appendChild(el)
+}
+
+function hideLoader() {
+  document.getElementById('meshyLoader')?.remove()
+}
+
+// ── 显示/隐藏第二阶段渲染角标 ────────────────────
+function showRenderingBadge() {
+  const wrap = document.getElementById('modelViewerWrap') || document.getElementById('modelViewBox')
+  if (!wrap || document.getElementById('meshyRenderingBadge')) return
+  wrap.style.position = 'relative'
+  const el = document.createElement('div')
+  el.id = 'meshyRenderingBadge'
+  el.className = 'meshy-rendering-badge'
+  el.innerHTML = `<div class="meshy-rendering-dot"></div>贴图渲染中...`
+  wrap.appendChild(el)
+}
+
+function hideRenderingBadge() {
+  document.getElementById('meshyRenderingBadge')?.remove()
+}
 
 // ── 状态提示 ──────────────────────────────────────
 let _fadeTimer = null
@@ -50,7 +160,7 @@ function setTimeTag(visible) {
 }
 
 // ── TTS 状态机 ────────────────────────────────────
-let _ttsState = 'idle' // idle | loading | playing | paused
+let _ttsState = 'idle'
 
 function _setTtsBtnUI(state) {
   _ttsState = state
@@ -58,14 +168,10 @@ function _setTtsBtnUI(state) {
   const label = document.getElementById('meshyTtsBtnLabel')
   if (!icon || !label) return
   switch (state) {
-    case 'loading':
-      icon.textContent = '⏳'; label.textContent = ' 加载中...'; break
-    case 'playing':
-      icon.textContent = '⏸'; label.textContent = ' 暂停朗读'; break
-    case 'paused':
-      icon.textContent = '▶️'; label.textContent = ' 继续朗读'; break
-    default:
-      icon.textContent = '🔊'; label.textContent = ' 朗读介绍'
+    case 'loading': icon.textContent = '⏳'; label.textContent = ' 加载中...'; break
+    case 'playing': icon.textContent = '⏸'; label.textContent = ' 暂停朗读'; break
+    case 'paused': icon.textContent = '▶️'; label.textContent = ' 继续朗读'; break
+    default: icon.textContent = '🔊'; label.textContent = ' 朗读介绍'
   }
 }
 
@@ -82,21 +188,16 @@ function _disableTtsBtn() {
   _setTtsBtnUI('idle')
 }
 
-// ── 切换模型时停止当前 TTS ────────────────────────
-// 不管是预设切换还是生成新模型，只要介绍词要变，就停掉旧音频
 function _stopTtsOnModelChange() {
-  if (_ttsState !== 'idle') {
-    stop()
-    _setTtsBtnUI('idle')
-  }
+  if (_ttsState !== 'idle') { stop(); _setTtsBtnUI('idle') }
 }
 
-// ── 注入 TTS 按钮 ─────────────────────────────────
+window._meshyStopTts = function () { _stopTtsOnModelChange() }
+
 function injectTtsButton() {
   if (document.getElementById('meshyTtsBtn')) return
   const card = document.querySelector('.model-info-card')
   if (!card) return
-
   const btn = document.createElement('button')
   btn.id = 'meshyTtsBtn'
   btn.disabled = true
@@ -117,32 +218,12 @@ function injectTtsButton() {
 
 function _handleTtsBtnClick() {
   if (_ttsState === 'loading') return
-
-  if (_ttsState === 'playing') {
-    pause()
-    _setTtsBtnUI('paused')
-    return
-  }
-
-  if (_ttsState === 'paused') {
-    resume()
-    _setTtsBtnUI('playing')
-    return
-  }
-
-  // idle → 全新播放，读当前介绍词
-  const introEl = document.getElementById('modelIntroText')
-  const text = introEl?.textContent?.trim()
+  if (_ttsState === 'playing') { pause(); _setTtsBtnUI('paused'); return }
+  if (_ttsState === 'paused') { resume(); _setTtsBtnUI('playing'); return }
+  const text = document.getElementById('modelIntroText')?.textContent?.trim()
   if (!text || text === '✨ 正在生成展品介绍...') return
-
   _setTtsBtnUI('loading')
-
-  speak(
-    text,
-    null,
-    () => { _setTtsBtnUI('playing') },   // onStart
-    () => { _setTtsBtnUI('idle') }        // onEnd
-  )
+  speak(text, null, () => { _setTtsBtnUI('playing') }, () => { _setTtsBtnUI('idle') })
 }
 
 // ── AI 展品介绍 ───────────────────────────────────
@@ -163,14 +244,12 @@ async function generateIntro(prompt) {
     const data = await res.json()
     return data.choices?.[0]?.message?.content?.trim() || null
   } catch (e) {
-    console.error('[Meshy] AI 介绍生成失败:', e)
-    return null
+    console.error('[Meshy] AI 介绍生成失败:', e); return null
   }
 }
 
 // ── 注入 model-viewer ─────────────────────────────
 function loadGeneratedModel(glbUrl, label, intro) {
-  // ✅ 切换模型时停止旧 TTS，防止继续播旧介绍词
   _stopTtsOnModelChange()
 
   const wrap = document.getElementById('modelViewerWrap') || document.getElementById('modelViewBox')
@@ -178,6 +257,8 @@ function loadGeneratedModel(glbUrl, label, intro) {
 
   wrap.querySelector('.model-empty-hint')?.remove()
   document.getElementById('mainModelViewer')?.remove()
+  // 白模出现时移除 spinner，加上渲染角标
+  hideLoader()
 
   const viewer = document.createElement('model-viewer')
   viewer.id = 'mainModelViewer'
@@ -199,14 +280,6 @@ function loadGeneratedModel(glbUrl, label, intro) {
   else _disableTtsBtn()
 }
 
-// ── 预设模型切换时也要停止 TTS ────────────────────
-// main.js 里的 onDropdownChange 切换预设模型后会重渲染页面
-// 重渲染后 meshyRestoreState 会被调用，届时已经是新的介绍词
-// 但如果切换时音频还在 paused，需要在这里提前 stop
-window._meshyStopTts = function () {
-  _stopTtsOnModelChange()
-}
-
 async function afterModelLoaded(glbUrl, prompt) {
   const intro = await generateIntro(prompt)
   const finalIntro = intro || '由 Meshy AI 根据您的描述生成的 3D 展品模型。'
@@ -217,12 +290,9 @@ async function afterModelLoaded(glbUrl, prompt) {
 }
 
 function injectTtsForPreset() {
-  const introEl = document.getElementById('modelIntroText')
-  const text = introEl?.textContent?.trim()
+  const text = document.getElementById('modelIntroText')?.textContent?.trim()
   if (!text || text === '暂无展品，请选择或生成内容。') return
-  injectTtsButton()
-  _enableTtsBtn()
-  _setTtsBtnUI('idle')
+  injectTtsButton(); _enableTtsBtn(); _setTtsBtnUI('idle')
 }
 
 // ── 轮询 ─────────────────────────────────────────
@@ -251,6 +321,15 @@ window.meshyGenerate = async function () {
   stop(); _setTtsBtnUI('idle')
   setBtnLoading(true); setTimeTag(true)
 
+  // 第一阶段：显示旋转 spinner，清空旧模型
+  const wrap = document.getElementById('modelViewerWrap') || document.getElementById('modelViewBox')
+  if (wrap) {
+    wrap.querySelector('.model-empty-hint')?.remove()
+    document.getElementById('mainModelViewer')?.remove()
+    hideRenderingBadge()
+    showLoader()
+  }
+
   try {
     setStatus('🚀 正在提交生成任务...')
 
@@ -276,9 +355,11 @@ window.meshyGenerate = async function () {
     const previewGlb = previewTask.model_urls?.glb || previewTask.model_urls?.obj
     if (!previewGlb) throw new Error('未找到预览模型链接')
 
+    // 白模就绪：hideLoader 在 loadGeneratedModel 内调用，同时显示渲染角标
     loadGeneratedModel(`${MESHY_GLB_PROXY}?url=${encodeURIComponent(previewGlb)}`, prompt.slice(0, 20), null)
-
+    showRenderingBadge()
     setStatus('🎨 正在生成贴图...')
+
     const refineRes = await fetch(MESHY_API_URL, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${MESHY_API_KEY}`, 'Content-Type': 'application/json' },
@@ -298,7 +379,9 @@ window.meshyGenerate = async function () {
     window._meshyTask = null
     window.meshyTask = { status: 'success', resultUrl: finalUrl, prompt }
 
+    // 最终模型：覆盖白模，移除渲染角标
     loadGeneratedModel(finalUrl, prompt.slice(0, 20), null)
+    hideRenderingBadge()
     afterModelLoaded(finalUrl, prompt)
 
     setStatus('✅ 生成完成！', false, true)
@@ -306,6 +389,7 @@ window.meshyGenerate = async function () {
 
   } catch (e) {
     console.error('[Meshy]', e)
+    hideLoader(); hideRenderingBadge()
     setStatus(`❌ ${e.message}`, true, true)
     setBtnLoading(false); setTimeTag(false)
     window._meshyTask = null
@@ -331,6 +415,7 @@ function meshyRestoreState() {
     const inp = document.getElementById('meshyPrompt')
     if (inp) inp.value = prompt
     setBtnLoading(true); setTimeTag(true)
+    showLoader()
     setStatus('⚙️ 生成任务进行中...')
     return
   }
