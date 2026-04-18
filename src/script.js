@@ -1,10 +1,27 @@
-import { chatWithAI, chatWithAIStream } from "./api/qwen";
+import { chatWithAI, chatWithAIStream, generateImage } from "./api/qwen";
 import { speak, stop, pause, resume, isPlaying } from "./tts.js";
 
 let chatHistoryData = [
     {
         role: "system",
-        content: `你是"绫韵"，刺绣文化数字人讲解员。只回答刺绣相关问题（历史、四大名绣、苗绣、针法、工具、非遗保护）。非刺绣话题请礼貌拒绝并引导回刺绣。回答亲切专业，100字以内为宜。`
+        content: `你是"绫韵"，刺绣文化数字人讲解员。只回答刺绣相关问题（历史、四大名绣、苗绣、针法、工具、非遗保护）。非刺绣话题请礼貌拒绝并引导回刺绣。回答亲切专业，100字以内为宜。
+
+你必须严格返回如下格式的 JSON，不要输出任何其他内容：
+{
+  "message": "对话内容",
+  "isGenerateImage": false,
+  "imagePrompt": ""
+}
+
+isGenerateImage 规则（只有以下情况才设为 true）：
+- 用户明确要求"看图""展示""生成图片""画一下"等
+- 用户询问某种具体绣品、针法或纹样的视觉样式，图片能显著帮助理解
+- 其他正常问答：isGenerateImage=false，imagePrompt 留空字符串
+
+imagePrompt 规则（isGenerateImage=true 时填写）：
+- 用中文写，15~30字，描述刺绣主题画面
+- 格式示例："中国传统苏绣，精细丝线刺绣，牡丹花卉图案，金丝底布，工笔风格"
+- 只输出 JSON，不要有任何前缀、后缀或 markdown 代码块`
     }
 ];
 
@@ -167,8 +184,15 @@ window.setEmotion = window.setEmotion || function () {};
 // ─────────────────────────────────────────────
 function updateTtsButtons(playing) {
     const pauseBtn = document.getElementById("ttsControlBtn");
-    const stopBtn = document.getElementById("ttsStopBtn");
-    if (pauseBtn) pauseBtn.classList.toggle("active", playing);
+    const stopBtn  = document.getElementById("ttsStopBtn");
+    if (pauseBtn) {
+        pauseBtn.classList.toggle("active", playing);
+        // TTS 结束/停止时把暂停键重置回"可暂停"状态，避免下次点击状态错乱
+        if (!playing) {
+            pauseBtn.textContent = "⏸";
+            pauseBtn.title = "暂停语音";
+        }
+    }
     if (stopBtn) stopBtn.classList.toggle("active", playing);
 }
 
@@ -379,7 +403,95 @@ async function appendAIStream(historyMessages, userInput, onDone) {
     if (!isAborted() && finalData) {
         if (finalData.isShowModel) handleModelDisplay(finalData.modelIndex);
         if (typeof onDone === "function") onDone(finalData);
+
+        // ── 图片生成：打字完成后异步追加到同一气泡 ──
+        // 不阻塞主流程，用户可以继续聊天，图片加载好后自动出现
+        if (finalData.isGenerateImage && finalData.imagePrompt) {
+            appendImageToDiv(div, finalData.imagePrompt);
+        }
     }
+}
+
+// ─────────────────────────────────────────────
+// 图片生成并追加到指定气泡 div
+// ─────────────────────────────────────────────
+async function appendImageToDiv(div, imagePrompt) {
+    console.log("[图片生成] 开始生成, prompt:", imagePrompt);
+    const chatEl = document.getElementById("chatHistory");
+
+    // 先在气泡底部插入骨架占位
+    const placeholder = document.createElement("div");
+    placeholder.className = "ai-image-loading";
+    placeholder.style.cssText = "display:flex;align-items:center;margin-top:10px;padding:6px 0;";
+    placeholder.innerHTML = `
+        <div class="ai-image-skeleton" style="display:flex;align-items:center;">
+            <span class="ai-image-loading-dot"></span>
+            <span class="ai-image-loading-dot"></span>
+            <span class="ai-image-loading-dot"></span>
+            <span style="margin-left:8px;font-size:12px;color:#999;">正在生成图片，约需15秒…</span>
+        </div>`;
+    div.appendChild(placeholder);
+    if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+
+    try {
+        const url = await generateImage(imagePrompt);
+        console.log("[图片生成] 结果URL:", url);
+        placeholder.remove();
+
+        if (!url) {
+            console.warn("图片生成失败，跳过展示");
+            return;
+        }
+
+        // 插入图片
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "刺绣配图";
+        img.className = "ai-generated-image";
+        img.style.cssText = [
+            "display:block",
+            "max-width:100%",
+            "border-radius:10px",
+            "margin-top:10px",
+            "cursor:pointer",
+            "box-shadow:0 2px 12px rgba(0,0,0,0.15)",
+            "transition:transform 0.2s"
+        ].join(";");
+        img.onclick = () => openImagePreview(url);
+        img.onmouseover = () => { img.style.transform = "scale(1.02)"; };
+        img.onmouseout  = () => { img.style.transform = ""; };
+
+        div.appendChild(img);
+        if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+
+    } catch (err) {
+        placeholder.remove();
+        console.error("图片追加失败:", err);
+    }
+}
+
+// ─────────────────────────────────────────────
+// 全屏图片预览（点击图片时弹出）
+// ─────────────────────────────────────────────
+function openImagePreview(url) {
+    let overlay = document.getElementById("imagePreviewOverlay");
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "imagePreviewOverlay";
+        overlay.style.cssText = [
+            "position:fixed",
+            "inset:0",
+            "z-index:9999",
+            "background:rgba(0,0,0,0.82)",
+            "display:flex",
+            "align-items:center",
+            "justify-content:center",
+            "cursor:zoom-out"
+        ].join(";");
+        overlay.onclick = () => overlay.remove();
+        document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `<img src="${url}" style="max-width:90vw;max-height:90vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.6);" />`;
 }
 
 // onDone 回调里统一 trim（sendBtn 和 quickQuestion 都走这里）
@@ -548,6 +660,9 @@ async function initLive2D() {
         window.stopLipsync  = function () { window._lipsyncActive = false; _lipsyncSmoothed = 0; };
 
         // ── 表情探测 ─────────────────────────────────
+        // 只有 expressionManager 里真实存在表情数据时才标记为支持
+        // 去掉原先 else 分支：exprCount=0 时 model.expression(0) 不会抛错
+        // 但实际没有表情，会误判为 true 导致表情栏错误显示
         let _expressionSupported = false;
         try {
             const exprMgr   = model.internalModel?.motionManager?.expressionManager;
@@ -555,10 +670,8 @@ async function initLive2D() {
             if (exprCount > 0) {
                 _expressionSupported = true;
                 try { model.expression(0); } catch (e) {}
-            } else {
-                model.expression(0);
-                _expressionSupported = true;
             }
+            // exprCount=0：_expressionSupported 保持 false，表情栏维持隐藏
         } catch (e) {
             _expressionSupported = false;
         }
@@ -709,18 +822,21 @@ function bindEvents() {
     }
 
     // TTS 暂停/继续
+    // 用按钮文字判断状态，而非 isPlaying()
+    // 原因：Web Speech API 暂停时 speaking 仍为 true，isPlaying() 无法区分"播放中"和"已暂停"
     if (ttsControlBtn) {
         ttsControlBtn.onclick = () => {
-            if (isPlaying()) {
-                pause();
-                pauseTyping();
-                ttsControlBtn.textContent = "▶";
-                ttsControlBtn.title = "继续语音";
-            } else {
+            const isPaused = ttsControlBtn.textContent === "▶";
+            if (isPaused) {
                 resume();
                 resumeTyping();
                 ttsControlBtn.textContent = "⏸";
                 ttsControlBtn.title = "暂停语音";
+            } else {
+                pause();
+                pauseTyping();
+                ttsControlBtn.textContent = "▶";
+                ttsControlBtn.title = "继续语音";
             }
         };
     }
