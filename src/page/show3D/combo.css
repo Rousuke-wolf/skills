@@ -1,0 +1,140 @@
+/* ── 合并控件 ── */
+.meshy-combo-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(255, 248, 235, 0.9);
+  border-bottom: 1px solid #e8d5a3;
+  flex-shrink: 0;
+}
+
+.meshy-combo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meshy-combo-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.meshy-combo-input {
+  flex: 1;
+  height: 38px;
+  padding: 0 12px;
+  border: 1.5px solid #d4b896;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #5a3e1b;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.meshy-combo-input:focus {
+  border-color: #c8a96e;
+  box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.15);
+}
+
+.meshy-combo-input::placeholder {
+  color: #b8a080;
+}
+
+.meshy-combo-input:disabled {
+  opacity: 0.6;
+}
+
+.meshy-gen-btn {
+  flex-shrink: 0;
+  padding: 0 18px;
+  height: 38px;
+  border: none;
+  border-radius: 20px;
+  background: #c8a96e;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.meshy-gen-btn:hover:not(:disabled) {
+  background: #b8934e;
+}
+
+.meshy-gen-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.meshy-gen-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.meshy-time-tag {
+  display: none;
+  align-items: center;
+  font-size: 12px;
+  color: #8a6030;
+  background: rgba(200, 169, 110, 0.15);
+  border: 1px solid #e8d5a3;
+  border-radius: 20px;
+  padding: 3px 12px;
+  width: fit-content;
+  animation: tagFadeIn 0.3s ease;
+}
+
+.meshy-time-tag.visible {
+  display: flex;
+}
+
+@keyframes tagFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── model-viewer 容器：撑满剩余高度，不溢出 ── */
+.model-view-box-top {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* 关键：裁掉超出的内容 */
+}
+
+.model-viewer-wrap {
+  flex: 1;
+  /* 占据 combo-bar 以外的全部高度 */
+  min-height: 0;
+  /* flex 子项高度收缩修复 */
+  overflow: hidden;
+  position: relative;
+}
+
+.model-viewer-wrap model-viewer,
+#mainModelViewer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent;
+}
+
+.model-viewer-wrap .model-empty-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
