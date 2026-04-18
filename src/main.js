@@ -96,6 +96,10 @@ window.switchTab = function (tab, modelIndex) {
 window.onDropdownChange = function (value) {
   const idx = Number(value)
   if (isNaN(idx) || idx < 0 || idx >= MODELS.length) return
+
+  // ✅ 切换模型前停止 TTS
+  if (typeof window._meshyStopTts === 'function') window._meshyStopTts()
+
   currentModelIndex = idx
   _modelHasContent = true
   const viewer = document.getElementById('mainModelViewer')
