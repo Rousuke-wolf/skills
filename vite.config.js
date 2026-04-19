@@ -9,6 +9,13 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/tts-api/, ''),
       },
+      // ── 新增：阿里云 图片生成 代理 ──────────────────────
+      "/image-api": {
+        target: "https://dashscope.aliyuncs.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/image-api/, "")
+      },
+
 
       // ── 新增：Meshy API 代理（提交任务 / 查询进度）──
       '/meshy-api': {
