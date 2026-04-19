@@ -7,6 +7,7 @@ let _teachCtx      = null;
 let _teachSource   = null;
 let _teachAnalyser = null;
 let _teachGen      = 0;
+let _teachFallbackActive = false;   // 标记是否在走 fallback 路径
 
 window._teachAmplitude = 0;
 let _teachRaf = null;
@@ -37,19 +38,26 @@ function _stopTeachPrevious() {
   _teachAnalyser = null;
   if (_teachSource) { try { _teachSource.stop(); } catch (e) {} _teachSource = null; }
   if (_teachCtx)    { try { _teachCtx.close();   } catch (e) {} _teachCtx    = null; }
+  // Fix: 同步清掉 speechSynthesis 队列，防止 fallback utterance 残留
+  window.speechSynthesis?.cancel();
+  _teachFallbackActive = false;
 }
 
 export function teachStop() {
   _teachGen++;
-  _stopTeachPrevious();
-  window.speechSynthesis?.cancel();
+  _stopTeachPrevious();   // 已包含 speechSynthesis.cancel()
 }
 
 export function teachSpeak(text, onEnd) {
   if (!text?.trim()) return;
 
   const myGen = ++_teachGen;
+  _teachFallbackActive = false;
   _stopTeachPrevious();
+
+  // Fix: 带 30 秒超时的 AbortController，防止 fetch 挂起后触发幽灵 fallback
+  const abortCtrl  = new AbortController();
+  const abortTimer = setTimeout(() => abortCtrl.abort(), 30000);
 
   (async () => {
     try {
@@ -62,8 +70,11 @@ export function teachSpeak(text, onEnd) {
           volume: settings.volume ?? 50,
           rate:   settings.rate   ?? 1.0,
           voice:  TEACH_VOICE,
-        })
+        }),
+        signal: abortCtrl.signal
       });
+
+      clearTimeout(abortTimer);
 
       if (_teachGen !== myGen) return;
       if (!res.ok || !res.body) { _teachFallback(text, onEnd); return; }
@@ -76,21 +87,20 @@ export function teachSpeak(text, onEnd) {
       _teachCtx = audioCtx;
 
       const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
+      analyser.fftSize               = 256;
       analyser.smoothingTimeConstant = 0.6;
       analyser.connect(audioCtx.destination);
       _teachAnalyser = analyser;
       _startTeachAmpLoop(analyser);
 
-      // ── 流式解码，与 tts.js 完全相同的策略 ──────────
-      const FIRST_CHUNK_SIZE = 6144;   // 6KB 首块，快速起播
-      const NEXT_CHUNK_SIZE  = 4096;   // 4KB 后续块
+      // ── 流式解码 ──────────────────────────────────────
+      const FIRST_CHUNK_SIZE = 6144;
+      const NEXT_CHUNK_SIZE  = 4096;
       let isFirst = true;
 
-      const reader = res.body.getReader();
-      let buffer = new Uint8Array(0);
+      const reader     = res.body.getReader();
+      let buffer       = new Uint8Array(0);
       let nextPlayTime = audioCtx.currentTime;
-      let isLastSource = false;
 
       const flush = async (force = false) => {
         const minSize = isFirst ? FIRST_CHUNK_SIZE : NEXT_CHUNK_SIZE;
@@ -98,7 +108,7 @@ export function teachSpeak(text, onEnd) {
         if (buffer.length === 0) return;
 
         const chunk = buffer.slice();
-        buffer = new Uint8Array(0);
+        buffer  = new Uint8Array(0);
         isFirst = false;
 
         if (_teachGen !== myGen) return;
@@ -107,14 +117,14 @@ export function teachSpeak(text, onEnd) {
           const decoded = await audioCtx.decodeAudioData(chunk.buffer);
           if (_teachGen !== myGen) return;
 
-          const source = audioCtx.createBufferSource();
+          const source  = audioCtx.createBufferSource();
           source.buffer = decoded;
           source.connect(analyser);
 
           const startAt = Math.max(nextPlayTime, audioCtx.currentTime);
           source.start(startAt);
-          nextPlayTime = startAt + decoded.duration;
-          _teachSource = source;
+          nextPlayTime  = startAt + decoded.duration;
+          _teachSource  = source;
 
           if (force) {
             // 最后一块：播完后触发 onEnd 回调
@@ -142,16 +152,27 @@ export function teachSpeak(text, onEnd) {
       }
 
     } catch (e) {
-      console.error("[TTS-Teach] 异常:", e);
-      _stopTeachAmpLoop();
-      if (_teachGen === myGen) _teachFallback(text, onEnd);
+      clearTimeout(abortTimer);
+      // 只在主音频未成功起播时才降级
+      if (_teachGen === myGen && !_teachCtx) {
+        console.warn("[TTS-Teach] 降级到浏览器 TTS:", e.message);
+        _stopTeachAmpLoop();
+        _teachFallback(text, onEnd);
+      } else {
+        console.warn("[TTS-Teach] 异常已忽略（音频已在播放或被中断）:", e.message);
+        _stopTeachAmpLoop();
+      }
     }
   })();
 }
 
 function _teachFallback(text, onEnd) {
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "zh-CN";
-  u.onend = onEnd;
+  _teachFallbackActive = true;
+  const u  = new SpeechSynthesisUtterance(text);
+  u.lang   = "zh-CN";
+  u.onend  = () => {
+    _teachFallbackActive = false;
+    if (typeof onEnd === "function") onEnd();
+  };
   window.speechSynthesis?.speak(u);
 }
