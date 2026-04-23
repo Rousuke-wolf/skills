@@ -129,7 +129,7 @@ window.jumpToPhase = function(phaseIdx) {
 window.stepCardClicked = function(cardIdx) {
   // 1. 停止上一次讲解
   stop();
-  if (typeof window.setCharacterState === 'function') window.setCharacterState('idle');
+  if (typeof window.stopLipsync === 'function') window.stopLipsync();
 
   // 2. 跳动画
   const phaseIdx = CARD_TO_PHASE[cardIdx] ?? cardIdx;
@@ -141,11 +141,11 @@ window.stepCardClicked = function(cardIdx) {
     const text = lines[cardIdx];
     // 估算播放时长：中文约 4 字/秒（语速 1.2x）
     const estimatedMs = (text.length / (4 * 1.2)) * 1000 + 500;
-    if (typeof window.setCharacterState === 'function') window.setCharacterState('talk');
+    if (typeof window.startLipsync === 'function') window.startLipsync();
     speak(text);
     // 播完后切回 idle
     setTimeout(() => {
-      if (typeof window.setCharacterState === 'function') window.setCharacterState('idle');
+      if (typeof window.stopLipsync === 'function') window.stopLipsync();
     }, estimatedMs);
   }
 };
@@ -475,7 +475,7 @@ window.selectStep = function(el) {
 window.selectPill = function(el) {
   // 切换前先停止当前讲解，让 3D 模型回 idle
   stop();
-  if (typeof window.setCharacterState === 'function') window.setCharacterState('idle');
+  if (typeof window.stopLipsync === 'function') window.stopLipsync();
 
   const row=el.closest('.control-row');
   if(row) row.querySelectorAll('.pill-btn').forEach(b=>b.classList.remove('pill-active'));

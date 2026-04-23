@@ -14,21 +14,8 @@ export default function buildTeachingPage() {
         <div class="left-stage">
           <div class="section-label">数字人引导区</div>
           <div class="character-section">
-            <div class="character-3d" id="teachingViewerWrap">
-              <model-viewer
-                id="teachingViewer"
-                src="/model/character/idle(model).glb"
-                autoplay
-                shadow-intensity="1"
-                exposure="1.1"
-                camera-orbit="0deg 90deg 2.2m"
-                camera-target="0m 1.2m 0m"
-                min-camera-orbit="auto auto 0.8m"
-                max-camera-orbit="auto auto 4.0m"
-                field-of-view="70deg"
-                interaction-prompt="none"
-                style="width:100%;height:100%;background:transparent;--poster-color:transparent;">
-              </model-viewer>
+            <div class="character-3d">
+              <canvas id="live2d" style="width:100%;height:100%;display:block;"></canvas>
             </div>
           </div>
           <div class="live2d-scene-info">
