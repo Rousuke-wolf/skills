@@ -1,7 +1,7 @@
 // tts-teach.js — 教学页专用 TTS，流式解码（低延迟 + 无电流声）
 
 const TTS_TEACH_PROXY = "http://localhost:3001/tts";
-const TEACH_VOICE     = "longxiaoxia_v2";   // 教学页音色，改这里切换
+const TEACH_VOICE     = "longling_v2";   // 教学页音色，改这里切换
 
 let _teachCtx      = null;
 let _teachSource   = null;
