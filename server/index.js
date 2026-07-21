@@ -34,6 +34,18 @@ app.get('/api/debug/smtp-test', async (req, res) => {
   res.json({ ...result, devMode: process.env.DEV_MODE === 'true' })
 })
 
+// ── 数据备份 ──
+import { manualBackup, listBackups } from './db.js'
+
+app.post('/api/admin/backup', (req, res) => {
+  const result = manualBackup()
+  res.json(result)
+})
+
+app.get('/api/admin/backups', (req, res) => {
+  res.json({ backups: listBackups() })
+})
+
 // ── 生产环境：托管前端静态文件 ──────────────────────
 const distPath = join(__dirname, '..', 'dist')
 if (existsSync(distPath)) {

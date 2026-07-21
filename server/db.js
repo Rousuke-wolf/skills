@@ -1,17 +1,68 @@
 import Database from 'better-sqlite3'
+import { existsSync, mkdirSync, copyFileSync, readdirSync, unlinkSync, statSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const dbPath = join(__dirname, 'data.db')
 
+// ── 数据目录：server/data/ ──────────────────────────
+const dataDir = join(__dirname, 'data')
+if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true })
+
+// ── 备份目录 ────────────────────────────────────────
+const backupDir = join(dataDir, 'backups')
+if (!existsSync(backupDir)) mkdirSync(backupDir, { recursive: true })
+
+// ── 数据库文件 ──────────────────────────────────────
+const dbPath = join(dataDir, 'database.db')
 const db = new Database(dbPath)
 
-// 启用 WAL 模式提升并发性能
+// 启用 WAL 模式
 db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
 
-// ── 初始化数据库表 ──
+// ── 备份：启动时自动备份 + 保留最近 7 天 ──
+function autoBackup() {
+  try {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)
+    const dest = join(backupDir, `database-${stamp}.db`)
+    copyFileSync(dbPath, dest)
+    console.log(`📦 数据库已备份: ${dest}`)
+
+    // 清理 7 天前的旧备份
+    const now = Date.now()
+    const files = readdirSync(backupDir).filter(f => f.endsWith('.db'))
+    for (const f of files) {
+      const p = join(backupDir, f)
+      if (now - statSync(p).mtimeMs > 7 * 24 * 60 * 60 * 1000) {
+        unlinkSync(p)
+        console.log(`🗑 已清理旧备份: ${f}`)
+      }
+    }
+  } catch (err) {
+    console.error('[db] 自动备份失败:', err.message)
+  }
+}
+
+// ── 手动导出备份（供 API 调用）──
+export function manualBackup() {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)
+  const dest = join(backupDir, `database-manual-${stamp}.db`)
+  copyFileSync(dbPath, dest)
+  return { ok: true, path: dest, stamp }
+}
+
+// ── 列出备份文件 ──
+export function listBackups() {
+  const files = readdirSync(backupDir).filter(f => f.endsWith('.db'))
+  return files.map(f => {
+    const p = join(backupDir, f)
+    const s = statSync(p)
+    return { name: f, size: s.size, time: s.mtime.toISOString() }
+  }).sort((a, b) => b.time.localeCompare(a.time))
+}
+
+// ── 初始化表 ──
 export function initDB() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -25,11 +76,8 @@ export function initDB() {
       updated_at  TEXT    DEFAULT (datetime('now'))
     )
   `)
-
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-  `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`)
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS email_verifications (
@@ -41,41 +89,37 @@ export function initDB() {
       created_at  TEXT    DEFAULT (datetime('now'))
     )
   `)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_verifications_email_code ON email_verifications(email, code)`)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_verifications_expires ON email_verifications(expires_at)`)
 
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_verifications_email_code ON email_verifications(email, code);
-    CREATE INDEX IF NOT EXISTS idx_verifications_expires ON email_verifications(expires_at);
-  `)
+  // 启动时自动备份（只有数据库已存在且有数据时才备份）
+  const [row] = db.prepare("SELECT COUNT(*) as cnt FROM users").all()
+  if (row.cnt > 0) {
+    autoBackup()
+  }
 
-  console.log('✅ SQLite 数据库初始化完成: ' + dbPath)
+  console.log(`✅ 数据库就绪: ${dbPath}`)
 }
 
-// ── 便捷查询方法（兼容原 MySQL query 接口）──
-// 返回 [rows] 格式，与原 mysql2 的 pool.execute(sql, params) 一致
+// ── 查询（兼容 mysql2 接口）──
 export function query(sql, params = []) {
-  // 将 MySQL 风格的 ? 占位符转换为 SQLite 风格（两者相同，保留）
-  // 将 MySQL 特定的日期函数转为 SQLite
   const converted = sql
     .replace(/NOW\(\)/gi, "datetime('now')")
     .replace(/DATE_ADD\(NOW\(\),\s*INTERVAL\s*(\d+)\s*MINUTE\)/gi,
       (_, min) => `datetime('now', '+${min} minutes')`)
 
   const isSelect = converted.trim().toUpperCase().startsWith('SELECT')
-   || converted.trim().toUpperCase().startsWith('WITH')
+    || converted.trim().toUpperCase().startsWith('WITH')
 
   try {
     if (isSelect) {
-      const rows = db.prepare(converted).all(...params)
-      return [rows]
+      return [db.prepare(converted).all(...params)]
     } else {
       const result = db.prepare(converted).run(...params)
-      // 兼容 mysql2 返回格式: [result] 其中 result 包含 insertId
       return [{ insertId: result.lastInsertRowid, changes: result.changes }]
     }
   } catch (err) {
     console.error('[db] SQL 错误:', err.message)
-    console.error('[db] SQL:', converted)
-    console.error('[db] Params:', params)
     throw err
   }
 }
