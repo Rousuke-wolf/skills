@@ -1892,6 +1892,156 @@ body {
   box-shadow: none;
 }
 
+/* ── 导航栏用户区 ── */
+.nav-user-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-login-btn {
+  background: #c0392b;
+  color: white;
+  border: none;
+  padding: 7px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+.nav-login-btn:hover {
+  background: #922b21;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(192, 57, 43, 0.35);
+}
+
+.nav-register-btn {
+  background: transparent;
+  color: #8b6240;
+  border: 1.5px solid #8b6240;
+  padding: 7px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+.nav-register-btn:hover {
+  background: #8b6240;
+  color: white;
+}
+
+/* 已登录用户菜单 */
+.nav-user-menu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.nav-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3d1f0a;
+  cursor: default;
+}
+.nav-profile-link {
+  font-size: 13px;
+  color: #8b6240;
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid #d5c8b0;
+  border-radius: 14px;
+  transition: all 0.2s;
+}
+.nav-profile-link:hover {
+  color: #c0392b;
+  border-color: #c0392b;
+  background: rgba(192,57,43,0.04);
+}
+.nav-user-logout {
+  background: transparent;
+  color: #9a7d64;
+  border: 1px solid #d5c8b0;
+  padding: 5px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+.nav-user-logout:hover {
+  color: #c0392b;
+  border-color: #c0392b;
+  background: rgba(192, 57, 43, 0.05);
+}
+
+/* 退出确认弹窗 */
+.nav-logout-wrap {
+  position: relative;
+}
+.nav-logout-popup {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #ede3d0;
+  border-radius: 14px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+  box-shadow: 0 8px 28px rgba(92, 61, 32, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 100;
+}
+.nav-logout-popup.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.popup-text {
+  font-size: 15px;
+  color: #5c3d20;
+  font-weight: 500;
+}
+.popup-confirm {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 10px;
+  background: #c0392b;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+.popup-confirm:hover { background: #922b21; }
+.popup-cancel {
+  padding: 8px 20px;
+  border: 1px solid #d5c8b0;
+  border-radius: 10px;
+  background: #fff;
+  color: #9a7d64;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+.popup-cancel:hover {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
 /* ── 教学体验页：扩大动画演示区 ─────────────── */
 .anim-zone-large {
   min-height: 220px !important;

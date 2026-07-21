@@ -4,16 +4,30 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n api,web -c blue,green \"node server/index.js\" \"vite\"",
+    "dev:api": "node server/index.js",
+    "dev:web": "vite",
     "build": "vite build",
+    "start": "node server/index.js",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
     "vite": "^8.0.1"
   },
   "dependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.11.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.20.0",
+    "nodemailer": "^9.0.3",
     "openai": "^6.32.0",
+    "vue": "^3.5.40",
+    "vue-router": "^5.2.0",
     "ws": "^8.20.0"
   }
 }

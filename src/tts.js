@@ -1,5 +1,5 @@
 // tts.js - 整体解码播放（无电流声）+ 世代计数器 + 正确的暂停支持
-const TTS_PROXY = "http://localhost:3001/tts";
+const TTS_PROXY = "/tts";
 
 let currentSource   = null;
 let currentCtx      = null;

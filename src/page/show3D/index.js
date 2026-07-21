@@ -1,5 +1,5 @@
 import { MODELS } from '../../utils/models.js'
-import { currentModelIndex, _modelHasContent } from '../../main.js'
+import { appState } from '../../utils/state.js'
 import { buildNavbar } from '../../components/Navibar.js'
 import './index.css'
 import './combo.css'
@@ -44,7 +44,7 @@ export function buildModelDropdown() {
 
 export function build3DPage(hasModel = false) {
   const task = window.meshyTask
-  const presetModel = MODELS[currentModelIndex]
+  const presetModel = MODELS[appState.currentModelIndex]
 
   let currentSrc = ''
   let currentTitle = ''

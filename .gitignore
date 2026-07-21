@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# 环境变量（含密钥）
+.env
+server/.env
+
+# SQLite 数据库文件
+server/data.db

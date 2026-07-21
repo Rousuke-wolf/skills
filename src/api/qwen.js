@@ -3,13 +3,13 @@ import OpenAI from "openai";
 import { heritageListJSON } from "../utils/models.js";
 
 const openai = new OpenAI({
-  apiKey: "sk-bb2f9a5781d247568259cb014695d29a",
+  apiKey: "sk-a97f441010fd44488eb85dc3dacd9778",
   baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
   dangerouslyAllowBrowser: true
 });
 
 // API Key 单独保存，供图片生成接口直接使用（不走 OpenAI SDK）
-const DASHSCOPE_KEY = "sk-bb2f9a5781d247568259cb014695d29a";
+const DASHSCOPE_KEY = "sk-a97f441010fd44488eb85dc3dacd9778";
 
 const systemPrompt = `
 你是"绫韵"，刺绣文化数字人讲解员。只回答刺绣相关问题（历史、四大名绣、苗绣、针法、工具、非遗保护）。非刺绣话题请礼貌拒绝并引导回刺绣。回答亲切专业，100字以内为宜。
